@@ -1,0 +1,21 @@
+{
+  "name": "violentmonkeyscripts",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build:rule34utils": "node builder.js --name rule34utils --namespace rule34utils --match 'https://rule34.xxx/index.php*' --file projects/rule34utils/index.js --outfile dist/rule34utils.user.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@types/node": "^22.5.0",
+    "esbuild": "^0.23.1"
+  },
+  "dependencies": {
+    "esbuild-sass-plugin": "^3.3.1",
+    "lodash": "^4.17.21",
+    "plsargs": "^0.1.6"
+  }
+}

@@ -1,0 +1,84 @@
+.r34u--post-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.r34u--post-item {
+  display: flex;
+  flex-direction: column;
+  padding: 8px;
+  gap: 8px;
+  background-color: rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  width: fit-content;
+
+  & > .preview-container {
+    background-color: rgba(255, 255, 255, 0.1);
+
+    width: 200px;
+    height: 200px;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+
+    contain: content;
+    border-radius: 8px;
+
+    & > .video-indicator {
+      display: flex;
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      font-size: 24px;
+      color: whitesmoke;
+    }
+
+    img,
+    video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+    }
+  }
+
+  & > .tags {
+    display: flex;
+    flex-wrap: wrap;
+    padding: 8px;
+    gap: 4px;
+    background-color: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    width: 200px;
+    contain: content;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: 56px;
+
+    a {
+      text-decoration: none;
+      color: whitesmoke;
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 4px;
+      border-radius: 4px;
+      cursor: pointer;
+
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.5);
+      }
+    }
+  }
+}
+
+.awesomplete ul {
+  background-color: rgba(255, 255, 255, 0.75);
+  background-image: none;
+  border-radius: 8px;
+  padding: 8px;
+  color: black !important;
+}
