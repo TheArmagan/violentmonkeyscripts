@@ -18,8 +18,12 @@ export function ifExits(elm, callback) {
   if (elm) callback(elm);
 }
 
+export function uppercaseFirstLetters(string) {
+  return string.replace(/(?:^|\s)\S/g, (a) => a.toUpperCase());
+}
+
 export function formatTagName(tag) {
-  return tag.replace(/_/g, " ").replace(/(?:^|\s)\S/g, (a) => a.toUpperCase());
+  return uppercaseFirstLetters(tag.replace(/_/g, " "));
 }
 
 /**
