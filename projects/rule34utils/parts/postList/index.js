@@ -112,9 +112,7 @@ export function patchPostList() {
           <div class="search-button">Search</div>
           <div class="search-results"></div>
         </div>
-        <div class="tag-sections">
-          
-        </div>
+        <div class="tag-sections"></div>
       </div>
       <div class="r34u--post-list">
         <div class="pagination">
@@ -172,7 +170,7 @@ function patchSidebarSearchElement(searchContainer, content) {
 
     searchResultsElm.replaceChildren(...foundTags.map((tag) => {
       const tagElm = parseHTML(`
-        <button class="search-result" title="${tag.name} (${tag.count.toLocaleString()})">
+        <button class="search-result" title="${uppercaseFirstLetters(tag.type)}: ${tag.name} (${tag.count.toLocaleString()})">
           <span class="name">${highlightText(tag.name, searchValue)}</span>
           <span class="count">${formatNumber(tag.count)}</span>
         </button>

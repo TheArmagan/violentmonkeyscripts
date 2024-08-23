@@ -282,6 +282,10 @@
           font-size: 24px;
           color: whitesmoke;
         }
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.5);
+        }
       }
 
       input[type="number"] {
