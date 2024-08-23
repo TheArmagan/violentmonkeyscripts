@@ -12,6 +12,7 @@ function parseThumb(elm, sidebarTags = []) {
   const isVideo = altSpaced.includes("video ");
   const isAnimation = altSpaced.includes("animated ");
   let videoURL = null;
+  let animationURL = null;
   return {
     id: parseInt(elm.id.slice(1)),
     url,
@@ -33,6 +34,21 @@ function parseThumb(elm, sidebarTags = []) {
       }
 
       return videoURL === "NotFound" ? null : videoURL;
+    },
+    async fetchAnimationURL() {
+      if (!isAnimation || animationURL === "NotFound") return null;
+      if (animationURL) return animationURL;
+
+      const contentHtml = await fetch(url).then((res) => res.text());
+      const doc = parseHTMLDocument(contentHtml);
+
+      if (doc.querySelector("#fit-to-screen img[alt]")) {
+        animationURL = doc.querySelector("#fit-to-screen img[alt]").src;
+      } else {
+        animationURL = "NotFound";
+      }
+
+      return animationURL === "NotFound" ? null : animationURL;
     }
   };
 }
@@ -77,7 +93,7 @@ export function parsePostListPageContent(elm) {
 function parsePaginator(elm) {
   return {
     current_page: parseInt(elm.querySelector("b").textContent),
-    max_page: parseInt([...elm.querySelectorAll('a[href^="?page="]')].filter((a) => !!parseInt(a.textContent)).at(-1).textContent),
+    max_page: parseInt([...elm.querySelectorAll('a[href^="?page="]')].filter((a) => !!parseInt(a.textContent)).at(-1)?.textContent || 1),
     has_next: !!elm.querySelector('a[alt="next"]'),
   }
 }
