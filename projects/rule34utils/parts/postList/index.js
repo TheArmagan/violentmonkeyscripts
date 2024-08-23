@@ -1,13 +1,14 @@
 import _ from "lodash";
 import "./styles.scss";
-import { currentPageURL, parseHTML, parseHTMLDocument } from "../../utils.js";
+import { currentPageURL, fetchAutocompleteQuery, formatNumber, formatTagName, highlightText, parseHTML } from "../../utils.js";
+import { parsePostListPageContent } from "./parsers.js";
 
 const handlePreviewHover = _.debounce(
   /**
-   * @param {PostThumb} thumb 
+   * @param {import("./parsers.js").Post} post 
    * @param {HTMLDivElement} container 
    */
-  async (thumb, container) => {
+  async (post, container) => {
     if (container.classList.contains("video-preview-patched")) return;
     container.classList.add("video-preview-patched");
 
@@ -16,7 +17,7 @@ const handlePreviewHover = _.debounce(
     videoIndicator.classList.add("loading-rotate");
     videoIndicator.innerHTML = `<i class="ri-loader-4-line"></i>`;
 
-    const videoURL = await thumb.fetchVideoURL();
+    const videoURL = await post.fetchVideoURL();
 
     if (!videoURL) {
       videoIndicator.remove();
@@ -33,7 +34,6 @@ const handlePreviewHover = _.debounce(
     videoPreview.addEventListener("mouseleave", () => {
       videoPreview.replaceWith(staticPreview);
       videoPreview.pause();
-      hovered = false;
     });
 
     staticPreview.addEventListener("mouseenter", () => {
@@ -52,83 +52,177 @@ const handlePreviewHover = _.debounce(
 export function patchPostList() {
   if (!(currentPageURL.searchParams.get("page") === "post" && currentPageURL.searchParams.get("s") === "list")) return;
 
-  document.querySelectorAll(".thumb").forEach(
-    /**
-     * @param {HTMLSpanElement} thumbElm 
-     */
-    (thumbElm) => {
-      const thumb = parseThumb(thumbElm);
+  const content = parsePostListPageContent(document.querySelector("#content"));
+  console.log(content);
 
-      const newElement = parseHTML(`
-        <a class="r34u--post-item" href="${thumb.url}">
-          <div class="preview-container">
-            ${thumb.is_video ? `<div class="video-indicator"><i class="ri-play-fill"></i></div>` : ""}
+  document.querySelector("#content").remove();
+
+  const contentElm = parseHTML(`
+    <div class="r34u--post-list-content">
+      <div class="r34u--sidebar">
+        <div class="search-container">
+          <div class="search-bar">
+            <i class="ri-search-2-line"></i>
+            <input type="text" placeholder="Search tags..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           </div>
-          <div class="tags"></div>
-        </a>
-      `);
+          <div class="search-button">Search</div>
+          <div class="search-results"></div>
+        </div>
+        <div class="tags">
+          
+        </div>
+      </div>
+      <div class="r34u--post-list">
 
-      (async () => {
+      </div>
+    </div>
+  `);
 
-        const previewContainer = newElement.querySelector(".preview-container");
-        const staticPreview = parseHTML(`<img src="${thumb.thumbnail_img}" />`);
-        previewContainer.appendChild(staticPreview);
+  patchSidebarElement(contentElm.querySelector(".r34u--sidebar"), content);
+  patchPostListElement(contentElm.querySelector(".r34u--post-list"), content);
 
-        if (thumb.is_video) {
-          previewContainer.addEventListener("mouseenter", () => handlePreviewHover(thumb, previewContainer));
-        }
-      })();
-
-      (async () => {
-
-        const tagsContainer = newElement.querySelector(".tags");
-
-        tagsContainer.innerHTML = thumb.tags.map((tag) => {
-          const formattedTag = tag.replace(/_/g, " ").replace(/(?:^|\s)\S/g, (a) => a.toUpperCase());
-          return `<a href="/index.php?page=post&s=list&tags=${tag}">${formattedTag}</a>`;
-        }).join("");
-
-      })();
-
-      thumbElm.replaceWith(newElement);
-    }
-  );
-
-  document.querySelector(".image-list").classList.add("r34u--post-list");
+  document.body.appendChild(contentElm);
 }
 
 /**
- * @typedef {{id: number, url: string, thumbnail_img: string, is_video: boolean, tags: string[], fetchVideoURL: () => Promise<string | null>}} PostThumb 
+ * @param {HTMLDivElement} searchContainer 
+ * @param {ReturnType<parsePostListPageContent>} content 
  */
+function patchSidebarSearchElement(searchContainer, content) {
+  const searchInput = searchContainer.querySelector("input");
+  const searchResultsElm = searchContainer.querySelector(".search-results");
+  const searchButton = searchContainer.querySelector(".search-button");
+
+  searchInput.value = currentPageURL.searchParams.get("tags") || "";
+
+  function doSearch() {
+    const url = new URL(location.href);
+    url.searchParams.set("tags", searchInput.value);
+    location.href = url.href;
+  }
+
+  const debouncedSearch = _.debounce(async () => {
+    const lastSpaceIdx = searchInput.value.indexOf(" ", searchInput.selectionStart);
+    let searchValue = searchInput.value.slice(searchInput.selectionStart || 0, lastSpaceIdx === -1 ? searchInput.value.length : (lastSpaceIdx + 1)).trim();
+    if (!searchValue) searchValue = searchInput.value.split(" ").pop();
+
+    const foundTags = await fetchAutocompleteQuery(searchValue);
+
+    searchResultsElm.replaceChildren(...foundTags.map((tag) => {
+      const tagElm = parseHTML(`
+        <button class="search-result" title="${tag.name} (${tag.count.toLocaleString()})">
+          <span class="name">${highlightText(tag.name, searchValue)}</span>
+          <span class="count">${formatNumber(tag.count)}</span>
+        </button>
+      `);
+
+      tagElm.addEventListener("click", (e) => {
+        const tagsExcluded = searchInput.value.split(" ").slice(0, -1).filter((i) => i !== tag.name && i !== `-${tag.name}`);
+        searchInput.value = `${tagsExcluded.join(" ")} ${e.shiftKey ? "-" : ""}${tag.name}`.trim();
+      });
+
+      return tagElm;
+    }));
+    acceptTab = true;
+  }, 500);
+
+  document.body.addEventListener("click", (e) => {
+    if (!searchContainer.contains(e.target)) {
+      searchResultsElm.classList.remove("visible");
+    }
+  });
+
+  searchButton.addEventListener("click", doSearch);
+
+  searchInput.addEventListener("focus", () => {
+    searchResultsElm.classList.add("visible");
+  });
+
+  searchInput.addEventListener("keydown", (e) => {
+    const searchValue = searchInput.value;
+
+    searchResultsElm.querySelectorAll(".search-result .name").forEach((elm) => {
+      elm.innerHTML = highlightText(elm.textContent, searchValue);
+    });
+
+    if (e.key === "Shift") return;
+
+    if (e.key === "Enter") {
+      doSearch();
+      return;
+    }
+
+    debouncedSearch();
+  });
+
+  searchInput.addEventListener("mouseup", () => {
+    debouncedSearch();
+  });
+
+  debouncedSearch();
+}
 
 /**
- * @param {HTMLSpanElement} elm
- * @returns {PostThumb}
+ * @param {HTMLDivElement} sidebarElm 
+ * @param {ReturnType<parsePostListPageContent>} content 
  */
-function parseThumb(elm) {
-  const img = elm.querySelector("img");
-  const url = elm.querySelector("a").href;
-  let videoURL = null;
-  return {
-    id: parseInt(elm.id.slice(1)),
-    url,
-    thumbnail_img: img.src,
-    is_video: img.alt.includes("video "),
-    tags: img.alt.trim().split(" "),
-    async fetchVideoURL() {
-      if (!img.alt.includes("video ") || videoURL === "NotFound") return null;
-      if (videoURL) return videoURL;
+function patchSidebarElement(sidebarElm, content) {
+  patchSidebarSearchElement(sidebarElm.querySelector(".search-container"), content);
+}
 
-      const contentHtml = await fetch(url).then((res) => res.text());
-      const doc = parseHTMLDocument(contentHtml);
+/**
+ * @param {HTMLDivElement} postListElm 
+ * @param {ReturnType<parsePostListPageContent>} content 
+ */
+function patchPostListElement(postListElm, content) {
+  content.posts.forEach((post) => {
+    const newElement = parseHTML(`
+      <a class="post-item" href="${post.url}">
+        <div class="preview-container">
+          ${post.is_video ? `<div class="video-indicator"><i class="ri-play-fill"></i></div>` : ""}
+        </div>
+        <div class="tags"></div>
+      </a>
+    `);
 
-      if (doc.querySelector("source")) {
-        videoURL = doc.querySelector("source").src;
-      } else {
-        videoURL = "NotFound";
-      }
+    const previewContainer = newElement.querySelector(".preview-container");
+    const staticPreview = parseHTML(`<img src="${post.thumbnail_img}" />`);
+    previewContainer.appendChild(staticPreview);
 
-      return videoURL === "NotFound" ? null : videoURL;
+    if (post.is_video) {
+      previewContainer.addEventListener("mouseenter", () => handlePreviewHover(post, previewContainer));
     }
-  };
+
+    const tagsContainer = newElement.querySelector(".tags");
+
+    post.tags.forEach((tag) => {
+      /** @type {HTMLSpanElement} */
+      const tagElm = parseHTML(`
+        <span class="tag" title="Click to set tag, ctrl+click to add tag or shift+click to exclude tag.">
+          <span class="name">${formatTagName(tag.name)}</span>
+          ${tag.count ? `<span class="count">${formatNumber(tag.count)}</span>` : ""}
+        </span>
+      `);
+
+      tagElm.addEventListener("click", (e) => {
+        e.preventDefault();
+
+        const url = new URL(location.href);
+        let excludedTags = url.searchParams.get("tags").split(" ").filter((t) => t !== tag.name && t !== `-${tag.name}`);
+        if (e.ctrlKey) {
+          url.searchParams.set("tags", `${excludedTags.join(" ")} ${tag.name}`);
+        } else if (e.shiftKey) {
+          url.searchParams.set("tags", `${excludedTags.join(" ")} -${tag.name}`);
+        } else {
+          url.searchParams.set("tags", tag.name);
+        }
+
+        location.href = url.href;
+      });
+
+      tagsContainer.appendChild(tagElm);
+    });
+
+    postListElm.appendChild(newElement);
+  });
 }
