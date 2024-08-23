@@ -101,8 +101,25 @@ export function patchPostList() {
         </div>
       </div>
       <div class="r34u--post-list">
+        <div class="pagination">
+          <div class="icon prev ${content.pagination.current_page.number <= 1 ? "disabled" : ""}">
+            <i class="ri-arrow-left-s-line"></i>
+          </div>
+          <input type="number" value="${content.pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <div class="icon next ${!content.pagination.next_page ? "disabled" : ""}">
+            <i class="ri-arrow-right-s-line"></i>
+          </div>
+        </div>
         <div class="posts"></div>
-
+        <div class="pagination">
+          <div class="icon prev ${content.pagination.current_page.number <= 1 ? "disabled" : ""}">
+            <i class="ri-arrow-left-s-line"></i>
+          </div>
+          <input type="number" value="${content.pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+          <div class="icon next ${!content.pagination.next_page ? "disabled" : ""}">
+            <i class="ri-arrow-right-s-line"></i>
+          </div>
+        </div>
       </div>
     </div>
   `);
@@ -204,8 +221,16 @@ function patchSidebarElement(sidebarElm, content) {
  * @param {ReturnType<parsePostListPageContent>} content 
  */
 function patchPostListElement(postListElm, content) {
-  const postsElm = postListElm.querySelector(".posts");
+  patchPostListPostsElement(postListElm.querySelector(".posts"), content);
+  postListElm.querySelectorAll(".pagination").forEach((elm) => patchPostListPaginationElement(elm, content));
+  
+}
 
+/**
+ * @param {HTMLDivElement} postsElm 
+ * @param {ReturnType<parsePostListPageContent>} content 
+ */
+function patchPostListPostsElement(postsElm, content) {
   content.posts.forEach((post) => {
     const newElement = parseHTML(`
       <a class="post-item" href="${post.url}">
@@ -255,5 +280,35 @@ function patchPostListElement(postListElm, content) {
     });
 
     postsElm.appendChild(newElement);
+  });
+}
+
+/**
+ * @param {HTMLDivElement} paginationElm 
+ * @param {ReturnType<parsePostListPageContent>} content 
+ */
+function patchPostListPaginationElement(paginationElm, content) {
+  const prevElm = paginationElm.querySelector(".prev");
+  const nextElm = paginationElm.querySelector(".next");
+  const pageInput = paginationElm.querySelector("input");
+
+  pageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const url = new URL(location.href);
+      url.searchParams.set("pid", Math.max(pageInput.value - 1, 0) * 42);
+      location.href = url.href;
+    }
+  });
+
+  prevElm.addEventListener("click", () => {
+    const url = new URL(location.href);
+    url.searchParams.set("pid", Math.max(content.pagination.current_page.pid - 42, 0));
+    location.href = url.href;
+  });
+
+  nextElm.addEventListener("click", () => {
+    const url = new URL(location.href);
+    url.searchParams.set("pid", content.pagination.current_page.pid + 42);
+    location.href = url.href;
   });
 }
