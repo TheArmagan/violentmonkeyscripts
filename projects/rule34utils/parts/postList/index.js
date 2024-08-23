@@ -1,6 +1,6 @@
 import _ from "lodash";
 import "./styles.scss";
-import { currentPageURL, fetchAutocompleteQuery, formatNumber, formatTagName, highlightText, parseHTML } from "../../utils.js";
+import { currentPageURL, fetchAutocompleteQuery, formatNumber, formatTagName, highlightText, parseHTML, uppercaseFirstLetters } from "../../utils.js";
 import { parsePostListPageContent } from "./parsers.js";
 
 const handlePreviewHover = _.debounce(
@@ -77,6 +77,22 @@ const handlePreviewHover = _.debounce(
   500
 );
 
+const tagClickHandler = (tag) => (e) => {
+  e.preventDefault();
+
+  const url = new URL(location.href);
+  let excludedTags = url.searchParams.get("tags").split(" ").filter((t) => t !== tag.name && t !== `-${tag.name}`);
+  if (e.ctrlKey) {
+    url.searchParams.set("tags", `${excludedTags.join(" ")} ${tag.name}`);
+  } else if (e.shiftKey) {
+    url.searchParams.set("tags", `${excludedTags.join(" ")} -${tag.name}`);
+  } else {
+    url.searchParams.set("tags", tag.name);
+  }
+
+  location.href = url.href;
+};
+
 export function patchPostList() {
   if (!(currentPageURL.searchParams.get("page") === "post" && currentPageURL.searchParams.get("s") === "list")) return;
 
@@ -96,7 +112,7 @@ export function patchPostList() {
           <div class="search-button">Search</div>
           <div class="search-results"></div>
         </div>
-        <div class="tags">
+        <div class="tag-sections">
           
         </div>
       </div>
@@ -214,6 +230,43 @@ function patchSidebarSearchElement(searchContainer, content) {
  */
 function patchSidebarElement(sidebarElm, content) {
   patchSidebarSearchElement(sidebarElm.querySelector(".search-container"), content);
+  patchSidebarTagsElement(sidebarElm.querySelector(".tag-sections"), content);
+}
+
+/**
+ * @param {HTMLDivElement} tagsSectionElm 
+ * @param {ReturnType<parsePostListPageContent>} content 
+ */
+function patchSidebarTagsElement(tagsSectionElm, content) {
+
+  Object.entries(
+    Object.groupBy(content.tags, (tag) => tag.type)
+  ).forEach(([tagType, tags]) => {
+    const sectionElm = parseHTML(`
+      <div class="tag-section">
+        <div class="header">${uppercaseFirstLetters(tagType)}</div>
+        <div class="tags"></div>
+      </div>  
+    `);
+
+    const tagsElm = sectionElm.querySelector(".tags");
+
+    tagsElm.replaceChildren(...tags.map((tag) => {
+      const tagElm = parseHTML(`
+        <div class="tag" title="Click to set tag, ctrl+click to add tag or shift+click to exclude tag.">
+          <span class="name">${formatTagName(tag.name)}</span>
+          ${tag.count ? `<span class="count">${formatNumber(tag.count)}</span>` : ""}
+        </div>  
+      `);
+
+      tagElm.addEventListener("click", tagClickHandler(tag));
+
+      return tagElm;
+    }));
+
+    tagsSectionElm.appendChild(sectionElm);
+  });
+
 }
 
 /**
@@ -223,7 +276,7 @@ function patchSidebarElement(sidebarElm, content) {
 function patchPostListElement(postListElm, content) {
   patchPostListPostsElement(postListElm.querySelector(".posts"), content);
   postListElm.querySelectorAll(".pagination").forEach((elm) => patchPostListPaginationElement(elm, content));
-  
+
 }
 
 /**
@@ -260,21 +313,7 @@ function patchPostListPostsElement(postsElm, content) {
         </span>
       `);
 
-      tagElm.addEventListener("click", (e) => {
-        e.preventDefault();
-
-        const url = new URL(location.href);
-        let excludedTags = url.searchParams.get("tags").split(" ").filter((t) => t !== tag.name && t !== `-${tag.name}`);
-        if (e.ctrlKey) {
-          url.searchParams.set("tags", `${excludedTags.join(" ")} ${tag.name}`);
-        } else if (e.shiftKey) {
-          url.searchParams.set("tags", `${excludedTags.join(" ")} -${tag.name}`);
-        } else {
-          url.searchParams.set("tags", tag.name);
-        }
-
-        location.href = url.href;
-      });
+      tagElm.addEventListener("click", tagClickHandler(tag));
 
       tagsContainer.appendChild(tagElm);
     });
