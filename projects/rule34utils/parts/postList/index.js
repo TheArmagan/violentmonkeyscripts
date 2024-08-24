@@ -81,6 +81,7 @@ const tagClickHandler = (tag) => (e) => {
   e.preventDefault();
 
   const url = new URL(location.href);
+  url.searchParams.set("pid", 0);
   let excludedTags = url.searchParams.get("tags").split(" ").filter((t) => t !== tag.name && t !== `-${tag.name}`);
   if (e.ctrlKey) {
     url.searchParams.set("tags", `${excludedTags.join(" ")} ${tag.name}`);
@@ -158,6 +159,7 @@ function patchSidebarSearchElement(searchContainer, content) {
   function doSearch() {
     const url = new URL(location.href);
     url.searchParams.set("tags", searchInput.value);
+    url.searchParams.set("pid", 0);
     location.href = url.href;
   }
 
