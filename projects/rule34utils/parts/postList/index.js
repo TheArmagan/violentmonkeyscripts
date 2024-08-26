@@ -110,7 +110,56 @@ export function patchPostList() {
             <i class="ri-search-2-line"></i>
             <input type="text" placeholder="Search tags..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
           </div>
-          <div class="search-button">Search</div>
+          <div class="buttons">
+            <div class="filters-button button">
+              <i class="ri-filter-3-line"></i>
+              Filters
+            </div>
+            <div class="search-button button">
+              <i class="ri-search-2-line"></i>
+              Search
+            </div>
+          </div>
+          <div class="filter-sections">
+            <div class="filter-section" data-key="rating" data-allow-multiple-values="false">
+              <div class="header">Rating</div>
+              <div class="filters">
+                <div class="filter" data-value="safe" data-type="+-_">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Safe</span>
+                </div>
+                <div class="filter" data-value="questionable" data-type="+-_">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Questionable</span>
+                </div>
+                <div class="filter" data-value="explicit" data-type="+-_">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Explicit</span>
+                </div>
+                <div class="filter" data-value="[none]" data-type="+-_">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>All</span>
+                </div>
+              </div>
+            </div>
+            <div class="filter-section" data-key="sort" data-allow-multiple-values="false">
+              <div class="header">Storting</div>
+              <div class="filters">
+                <div class="filter" data-value="score" data-type="+-">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Score</span>
+                </div>
+                <div class="filter" data-value="updated" data-type="+-">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Updated</span>
+                </div>
+                <div class="filter" data-value="[none]" data-type="+-">
+                  <i class="ri-checkbox-blank-line"></i>
+                  <span>Unsorted</span>
+                </div>
+              </div>
+            </div>
+          </div>
           <div class="search-results"></div>
         </div>
         <div class="tag-sections"></div>
@@ -154,19 +203,114 @@ function patchSidebarSearchElement(searchContainer, content) {
   const searchResultsElm = searchContainer.querySelector(".search-results");
   const searchButton = searchContainer.querySelector(".search-button");
 
-  searchInput.value = currentPageURL.searchParams.get("tags") || "";
+  const filtersButton = searchContainer.querySelector(".filters-button");
+
+  /** @type {{key: "rating"|"sort", value: string, negate: boolean }[]} */
+  let filters = [];
+  searchInput.value = (currentPageURL.searchParams.get("tags") || "").replace(/(-?)(\w+):(\w+)/g, "").trim();
+
+  /** @type {HTMLDivElement} */
+  const filterSectionsElm = searchContainer.querySelector(".filter-sections");
+
+  if (localStorage.getItem("r34u--show-filters") === "true") filterSectionsElm.classList.add("visible");
+
+  filtersButton.addEventListener("click", () => {
+    filterSectionsElm.classList.toggle("visible");
+    localStorage.setItem("r34u--show-filters", filterSectionsElm.classList.contains("visible"));
+  });
+
+  (() => {
+    const tags = currentPageURL.searchParams.get("tags");
+    [...tags.matchAll(/(-?)(\w+):(\w+)/g)].forEach(([, negate, key, value]) => {
+      filters.push({ key, value, negate: !!negate });
+    });
+
+    /** @type {HTMLDivElement[]} */
+    const filterSectionsElms = [...searchContainer.querySelectorAll(".filter-section")];
+
+    filterSectionsElms.forEach((sectionElm) => {
+      const filterKey = sectionElm.dataset.key;
+      const allowMultipleValues = sectionElm.dataset.allowMultipleValues === "true";
+
+      /** @type {HTMLDivElement[]} */
+      const filterElms = [...sectionElm.querySelectorAll(".filter")];
+
+      filterElms.forEach((filterElm) => {
+        const filterValue = filterElm.dataset.value;
+        const filterType = filterElm.dataset.type;
+
+        const filter = filters.find((f) => f.key === filterKey && f.value === filterValue);
+
+        if (filter) filterElm.querySelector("i").className = filter.negate ? "ri-checkbox-indeterminate-line" : "ri-add-box-line";
+
+        filterElm.addEventListener("click", () => {
+          let foundFilter = filters.find((f) => f.key === filterKey && f.value === filterValue);
+
+          if (!allowMultipleValues) {
+            filters = filters.filter((f) => f.key !== filterKey);
+            filterElms.forEach((elm) => elm.querySelector("i").className = "ri-checkbox-blank-line");
+          }
+
+          if (filterValue === "[none]") {
+            filters = filters.filter((f) => f.key !== filterKey);
+            filterElms.forEach((elm) => elm.querySelector("i").className = "ri-checkbox-blank-line");
+            filterElm.querySelector("i").className = "ri-add-box-line";
+            return;
+          }
+
+          switch (filterType) {
+            case "+-_": {
+              if (!foundFilter) {
+                filters.push({ key: filterKey, value: filterValue, negate: false });
+                filterElm.querySelector("i").className = "ri-add-box-line";
+                break;
+              }
+
+              if (foundFilter?.negate === false) {
+                if (!allowMultipleValues) {
+                  filters.push({ key: filterKey, value: filterValue, negate: true });
+                } else {
+                  foundFilter.negate = true;
+                }
+                filterElm.querySelector("i").className = "ri-checkbox-indeterminate-line";
+                break;
+              }
+
+              if (foundFilter) {
+                filters = filters.filter((f) => f !== foundFilter);
+                filterElm.querySelector("i").className = "ri-checkbox-blank-line";
+                break;
+              }
+              break;
+            }
+            case "+-": {
+              if (!foundFilter) {
+                filters.push({ key: filterKey, value: filterValue, negate: false });
+                filterElm.querySelector("i").className = "ri-add-box-line";
+              } else {
+                filters = filters.filter((f) => f !== foundFilter);
+                filterElm.querySelector("i").className = "ri-checkbox-blank-line";
+              }
+              break;
+            }
+          }
+        });
+      });
+    });
+  })();
 
   function doSearch() {
     const url = new URL(location.href);
-    url.searchParams.set("tags", searchInput.value);
+    url.searchParams.set("tags", `${searchInput.value} ${filters.filter(i => i.value !== "[none]").map((f) => `${f.negate ? "-" : ""}${f.key}:${f.value}`).join(" ")}`.trim());
     url.searchParams.set("pid", 0);
     location.href = url.href;
   }
 
   const debouncedSearch = _.debounce(async () => {
-    const lastSpaceIdx = searchInput.value.indexOf(" ", searchInput.selectionStart);
-    let searchValue = searchInput.value.slice(searchInput.selectionStart || 0, lastSpaceIdx === -1 ? searchInput.value.length : (lastSpaceIdx + 1)).trim();
-    if (!searchValue) searchValue = searchInput.value.split(" ").pop();
+    let input = searchInput.value.replaceAll("-", "").trim();
+    const lastSpaceIdx = input.indexOf(" ", searchInput.selectionStart);
+    let searchValue = input.slice(searchInput.selectionStart || 0, lastSpaceIdx === -1 ? input.length : (lastSpaceIdx + 1)).trim();
+    if (!searchValue) searchValue = input.split(" ").pop();
 
     const foundTags = await fetchAutocompleteQuery(searchValue);
 

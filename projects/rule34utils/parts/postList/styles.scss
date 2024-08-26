@@ -43,20 +43,65 @@
         }
       }
 
-      & > .search-button {
+      & > .buttons {
         display: flex;
-        align-items: center;
-        justify-content: center;
+        gap: 4px;
+
+        & > .button {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          gap: 8px;
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+          padding: 4px 8px;
+          cursor: pointer;
+          font-size: 14px;
+          color: whitesmoke;
+
+          &:hover {
+            background-color: rgba(255, 255, 255, 0.5);
+          }
+        }
+      }
+
+      & > .filter-sections {
+        width: 100%;
+        flex-direction: column;
         gap: 8px;
         background-color: rgba(255, 255, 255, 0.1);
+        padding: 8px;
         border-radius: 4px;
-        padding: 4px 8px;
-        cursor: pointer;
-        font-family: "Poppins", sans-serif;
-        font-size: 14px;
+        display: none;
 
-        &:hover {
-          background-color: rgba(255, 255, 255, 0.5);
+        &.visible {
+          display: flex;
+        }
+
+        .filter-section {
+          display: flex;
+          flex-direction: column;
+          gap: 2px;
+
+          & > .header {
+            font-size: 16px;
+            font-weight: 600;
+            line-height: 1;
+          }
+
+          & > .filters {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+
+            .filter {
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              gap: 2px;
+            }
+          }
         }
       }
 
