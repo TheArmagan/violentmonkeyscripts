@@ -1,3 +1,11 @@
+/**
+ * @typedef {{type: "copyright" | "general" | "metadata" | "artist", count: number, name: string}} TagType
+ */
+
+/**
+ * @typedef {{id: number, url: string, thumbnail_img: string, is_video: boolean, is_animation: boolean, tags: TagType[], fetchVideoURL: () => Promise<string | null>, fetchAnimationURL: () => Promise<string | null>}} Post 
+ */
+
 const domParser = new DOMParser();
 
 export function parseHTMLDocument(html) {
@@ -52,6 +60,3 @@ export function formatNumber(number) {
 
 export const currentPageURL = new URL(location.href);
 
-/**
- * @typedef {{type: "copyright" | "general" | "metadata" | "artist", count: number, name: string}} TagType
- */

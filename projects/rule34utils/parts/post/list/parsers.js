@@ -1,8 +1,9 @@
-import { currentPageURL, parseHTMLDocument } from "../../utils.js";
+import { currentPageURL, parseHTMLDocument } from "../../../utils.js";
+import { parseTagSidebar } from "../base/parsers.js";
 
 /**
  * @param {HTMLSpanElement} elm
- * @returns {Post}
+ * @returns {import("../../../utils.js").Post}
  */
 function parseThumb(elm, sidebarTags = []) {
   const img = elm.querySelector("img");
@@ -53,29 +54,10 @@ function parseThumb(elm, sidebarTags = []) {
   };
 }
 
-/**
- * @param {HTMLUListElement} elm
- * @returns {TagType[]}
- */
-function parseTagSidebar(elm) {
-  return [...elm.querySelectorAll('[class*="tag-type-"]')].map(parseSidebarTagType);
-}
-
-/**
- * @param {HTMLLIElement} elm
- * @returns {TagType}
- */
-function parseSidebarTagType(elm) {
-  return {
-    type: elm.className.slice(9),
-    count: parseInt(elm.querySelector(".tag-count").textContent),
-    name: elm.querySelector('a[href^="index.php"]').textContent.trim().replace(/ /g, "_")
-  }
-}
 
 /**
  * @param {HTMLDivElement} elm 
- * @returns {{tags: TagType[], posts: Post[], pagination: ReturnType<parsePaginator> }}
+ * @returns {{tags: import("../../../utils.js").TagType[], posts: Post[], pagination: ReturnType<parsePaginator> }}
  */
 export function parsePostListPageContent(elm) {
   const tags = parseTagSidebar(elm.querySelector("#tag-sidebar"));
@@ -115,10 +97,4 @@ function parsePaginator(elm) {
   }
 }
 
-/**
- * @typedef {{id: number, url: string, thumbnail_img: string, is_video: boolean, is_animation: boolean, tags: TagType[], fetchVideoURL: () => Promise<string | null>, fetchAnimationURL: () => Promise<string | null>}} Post 
- */
 
-/**
- * @typedef {{type: "copyright" | "general" | "metadata" | "artist", count: number, name: string}} TagType
- */

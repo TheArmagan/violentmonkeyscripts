@@ -1,5 +1,5 @@
-import { patchPostList } from "./postList/index.js";
+import { patchPostPage } from "./post/index.js";
 
 export function patchParts() {
-  patchPostList();
+  patchPostPage();
 }

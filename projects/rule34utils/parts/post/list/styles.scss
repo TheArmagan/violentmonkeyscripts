@@ -1,0 +1,149 @@
+.r34u--post-list-content {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+  padding-bottom: 8px;
+  width: 100%;
+
+  .r34u--post-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    width: 100%;
+
+    & > .posts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      padding: 8px;
+
+      .post-item {
+        display: flex;
+        flex-direction: column;
+        padding: 8px;
+        gap: 8px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+        width: fit-content;
+
+        & > .preview-container {
+          background-color: rgba(255, 255, 255, 0.1);
+
+          width: 200px;
+          height: 200px;
+
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          position: relative;
+
+          contain: content;
+          border-radius: 4px;
+
+          & > .video-indicator {
+            display: flex;
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 24px;
+            color: whitesmoke;
+          }
+
+          img,
+          video {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+          }
+        }
+
+        & > .tags {
+          display: flex;
+          flex-wrap: wrap;
+          padding: 8px;
+          gap: 4px;
+          background-color: rgba(255, 255, 255, 0.1);
+          border-radius: 4px;
+          width: 200px;
+          contain: content;
+          overflow-y: auto;
+          overflow-x: hidden;
+          height: 56px;
+
+          .tag {
+            text-decoration: none;
+            color: whitesmoke;
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 4px;
+            border-radius: 4px;
+            cursor: pointer;
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+
+            .count {
+              font-size: 12px;
+              color: rgba(255, 255, 255, 0.85);
+            }
+
+            &:hover {
+              background-color: rgba(255, 255, 255, 0.5);
+            }
+          }
+        }
+      }
+    }
+
+    & > .pagination {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      gap: 8px;
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 8px;
+      border-radius: 4px;
+
+      .icon {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 4px;
+
+        &.disabled {
+          pointer-events: none;
+          opacity: 0.5;
+        }
+
+        i {
+          font-size: 24px;
+          color: whitesmoke;
+        }
+
+        &:hover {
+          background-color: rgba(255, 255, 255, 0.5);
+        }
+      }
+
+      input[type="number"] {
+        background-color: rgba(255, 255, 255, 0.1);
+        border: none;
+        color: whitesmoke;
+        font-size: 16px;
+        width: 64px;
+        text-align: center;
+        border-radius: 4px;
+        height: 32px;
+      }
+    }
+  }
+}

@@ -4,7 +4,8 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "build:r34u": "node builder.js --name rule34utils --namespace rule34utils --match 'https://rule34.xxx/index.php*' --file projects/rule34utils/index.js --outfile dist/rule34utils.user.js"
+    "build:r34u": "node builder.js --name rule34utils --namespace rule34utils --match 'https://rule34.xxx/index.php*' --file projects/rule34utils/index.js --outfile dist/rule34utils.user.js",
+    "http-server": "cd ./dist && pnpx http-server -c-1 -p8081"
   },
   "keywords": [],
   "author": "",

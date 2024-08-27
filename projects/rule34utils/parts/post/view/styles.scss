@@ -1,0 +1,36 @@
+.r34u--post-view-content {
+  display: flex;
+  gap: 8px;
+  padding: 0 8px;
+  padding-bottom: 8px;
+  width: 100%;
+
+  .r34u--post-view {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 8px;
+    border-radius: 4px;
+    width: 100%;
+
+    & > .media {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 80vh;
+      max-height: 80vh;
+      background-color: rgba(255, 255, 255, 0.1);
+      contain: content;
+      border-radius: 4px;
+
+      img,
+      video {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+      }
+    }
+  }
+}
