@@ -130,13 +130,13 @@ function buildPaginationElement(pagination) {
 
   prevElm.addEventListener("click", () => {
     const url = new URL(location.href);
-    url.searchParams.set("pid", Math.max(content.pagination.current_page.pid - 42, 0));
+    url.searchParams.set("pid", Math.max(pagination.current_page.pid - 42, 0));
     location.href = url.href;
   });
 
   nextElm.addEventListener("click", () => {
     const url = new URL(location.href);
-    url.searchParams.set("pid", content.pagination.current_page.pid + 42);
+    url.searchParams.set("pid", pagination.current_page.pid + 42);
     location.href = url.href;
   });
 
@@ -151,9 +151,8 @@ function patchPostListElement(postListElm, content) {
   patchPostListPostsElement(postListElm.querySelector(".posts"), content);
 
   if (content.pagination) {
-    const paginationElm = buildPaginationElement(content.pagination);
-    postListElm.prepend(paginationElm);
-    postListElm.appendChild(paginationElm);
+    postListElm.prepend(buildPaginationElement(content.pagination));
+    postListElm.appendChild(buildPaginationElement(content.pagination));
   }
 }
 
@@ -198,12 +197,4 @@ function patchPostListPostsElement(postsElm, content) {
 
     postsElm.appendChild(newElement);
   });
-}
-
-/**
- * @param {HTMLDivElement} paginationElm 
- * @param {ReturnType<parsePostListPageContent>} content 
- */
-function patchPostListPaginationElement(paginationElm, content) {
-
 }

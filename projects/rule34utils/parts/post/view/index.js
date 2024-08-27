@@ -37,7 +37,7 @@ export function patchPostViewPage() {
 
   if (content.content.is_video) {
     /** @type {HTMLVideoElement} */
-    const videoElm = parseHTML(`<video controls autoplay loop playsinline></video>`);
+    const videoElm = parseHTML(`<video controls loop playsinline></video>`);
     videoElm.src = content.content.url;
 
     videoElm.volume = parseFloat(localStorage.getItem("r34u--video-volume") || "0.25");
