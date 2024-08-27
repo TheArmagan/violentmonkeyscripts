@@ -60,7 +60,7 @@ function parseThumb(elm, sidebarTags = []) {
  * @returns {{tags: import("../../../utils.js").TagType[], posts: Post[], pagination: ReturnType<parsePaginator> }}
  */
 export function parsePostListPageContent(elm) {
-  const tags = parseTagSidebar(elm.querySelector("#tag-sidebar"));
+  const tags = elm.querySelector("#tag-sidebar") ? parseTagSidebar(elm.querySelector("#tag-sidebar")) : [];
   return {
     tags,
     posts: [...elm.querySelectorAll(".thumb")].map((thumb) => parseThumb(thumb, tags)),
@@ -78,6 +78,7 @@ const getPid = (url) => {
  * @returns {{ current_page: { number: number, pid: number }, max_page: { number: number, pid: number }, next_page: { number: number, pid: number } | null }}
  */
 function parsePaginator(elm) {
+  if (!document.querySelector('a[href^="?page="]')) return null;
   const maxPage = [...elm.querySelectorAll('a[href^="?page="]')].filter((a) => !!parseInt(a.textContent)).at(-1);
   const currentPageNum = parseInt(elm.querySelector("b")?.textContent || 1);
   const nextPage = elm.querySelector('a[alt="next"]');

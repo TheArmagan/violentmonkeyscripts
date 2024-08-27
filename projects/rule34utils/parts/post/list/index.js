@@ -78,8 +78,6 @@ const handlePreviewHover = _.debounce(
   500
 );
 
-
-
 export function patchPostListPage() {
   if (!(currentPageURL.searchParams.get("page") === "post" && currentPageURL.searchParams.get("s") === "list")) return;
 
@@ -93,25 +91,7 @@ export function patchPostListPage() {
   const contentElm = parseHTML(`
     <div class="r34u--post-list-content">
       <div class="r34u--post-list">
-        <div class="pagination">
-          <div class="icon prev ${content.pagination.current_page.number <= 1 ? "disabled" : ""}">
-            <i class="ri-arrow-left-s-line"></i>
-          </div>
-          <input type="number" value="${content.pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-          <div class="icon next ${!content.pagination.next_page ? "disabled" : ""}">
-            <i class="ri-arrow-right-s-line"></i>
-          </div>
-        </div>
-        <div class="posts"></div>
-        <div class="pagination">
-          <div class="icon prev ${content.pagination.current_page.number <= 1 ? "disabled" : ""}">
-            <i class="ri-arrow-left-s-line"></i>
-          </div>
-          <input type="number" value="${content.pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-          <div class="icon next ${!content.pagination.next_page ? "disabled" : ""}">
-            <i class="ri-arrow-right-s-line"></i>
-          </div>
-        </div>
+        <div class="posts ${content.posts.length === 0 ? "hidden" : ""}"></div>
       </div>
     </div>
   `);
@@ -123,7 +103,45 @@ export function patchPostListPage() {
   document.body.appendChild(contentElm);
 }
 
+function buildPaginationElement(pagination) {
+  const elm = parseHTML(`
+    <div class="pagination">
+      <div class="icon prev ${pagination.current_page.number <= 1 ? "disabled" : ""}">
+        <i class="ri-arrow-left-s-line"></i>
+      </div>
+      <input type="number" value="${pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <div class="icon next ${!pagination.next_page ? "disabled" : ""}">
+        <i class="ri-arrow-right-s-line"></i>
+      </div>
+    </div>
+  `);
 
+  const prevElm = elm.querySelector(".prev");
+  const nextElm = elm.querySelector(".next");
+  const pageInput = elm.querySelector("input");
+
+  pageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      const url = new URL(location.href);
+      url.searchParams.set("pid", Math.max(pageInput.value - 1, 0) * 42);
+      location.href = url.href;
+    }
+  });
+
+  prevElm.addEventListener("click", () => {
+    const url = new URL(location.href);
+    url.searchParams.set("pid", Math.max(content.pagination.current_page.pid - 42, 0));
+    location.href = url.href;
+  });
+
+  nextElm.addEventListener("click", () => {
+    const url = new URL(location.href);
+    url.searchParams.set("pid", content.pagination.current_page.pid + 42);
+    location.href = url.href;
+  });
+
+  return elm;
+}
 
 /**
  * @param {HTMLDivElement} postListElm 
@@ -131,8 +149,12 @@ export function patchPostListPage() {
  */
 function patchPostListElement(postListElm, content) {
   patchPostListPostsElement(postListElm.querySelector(".posts"), content);
-  postListElm.querySelectorAll(".pagination").forEach((elm) => patchPostListPaginationElement(elm, content));
 
+  if (content.pagination) {
+    const paginationElm = buildPaginationElement(content.pagination);
+    postListElm.prepend(paginationElm);
+    postListElm.appendChild(paginationElm);
+  }
 }
 
 /**
@@ -183,27 +205,5 @@ function patchPostListPostsElement(postsElm, content) {
  * @param {ReturnType<parsePostListPageContent>} content 
  */
 function patchPostListPaginationElement(paginationElm, content) {
-  const prevElm = paginationElm.querySelector(".prev");
-  const nextElm = paginationElm.querySelector(".next");
-  const pageInput = paginationElm.querySelector("input");
 
-  pageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const url = new URL(location.href);
-      url.searchParams.set("pid", Math.max(pageInput.value - 1, 0) * 42);
-      location.href = url.href;
-    }
-  });
-
-  prevElm.addEventListener("click", () => {
-    const url = new URL(location.href);
-    url.searchParams.set("pid", Math.max(content.pagination.current_page.pid - 42, 0));
-    location.href = url.href;
-  });
-
-  nextElm.addEventListener("click", () => {
-    const url = new URL(location.href);
-    url.searchParams.set("pid", content.pagination.current_page.pid + 42);
-    location.href = url.href;
-  });
 }

@@ -28,6 +28,10 @@ body {
   color: whitesmoke;
 }
 
+.hidden {
+  display: none !important;
+}
+
 .loading-rotate {
   animation: rotate360 1s linear infinite;
 }
