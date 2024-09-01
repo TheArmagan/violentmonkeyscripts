@@ -60,3 +60,22 @@ export function formatNumber(number) {
 
 export const currentPageURL = new URL(location.href);
 
+export function setCurrentPageHashKey(key, value) {
+  let params = new URLSearchParams(location.hash.slice(1));
+  if (value) params.set(key, value);
+  else params.delete(key);
+  location.hash = params.toString();
+  currentPageURL.hash = location.hash;
+  history.replaceState(null, "", currentPageURL.href);
+}
+
+export function getCurrentPageHashKey(key) {
+  return new URLSearchParams(location.hash.slice(1)).get(key);
+}
+
+export const getPidFromURL = (url) => {
+  if (!url) return;
+  return parseInt(new URL(url).searchParams.get("pid"));
+}
+
+export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));

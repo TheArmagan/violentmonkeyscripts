@@ -1,4 +1,4 @@
-import { currentPageURL, parseHTMLDocument } from "../../../utils.js";
+import { currentPageURL, getPidFromURL, parseHTMLDocument } from "../../../utils.js";
 import { parseTagSidebar } from "../base/parsers.js";
 
 /**
@@ -68,32 +68,26 @@ export function parsePostListPageContent(elm) {
   }
 }
 
-const getPid = (url) => {
-  if (!url) return;
-  return parseInt(new URL(url).searchParams.get("pid"));
-}
+
 
 /**
  * @param {HTMLDivElement} elm 
- * @returns {{ current_page: { number: number, pid: number }, max_page: { number: number, pid: number }, next_page: { number: number, pid: number } | null }}
+ * @returns {{ current_page: { number: number, pid: number }, next_page: { number: number, pid: number } | null }}
  */
 function parsePaginator(elm) {
   if (!document.querySelector('a[href^="?page="]')) return null;
-  const maxPage = [...elm.querySelectorAll('a[href^="?page="]')].filter((a) => !!parseInt(a.textContent)).at(-1);
+
   const currentPageNum = parseInt(elm.querySelector("b")?.textContent || 1);
   const nextPage = elm.querySelector('a[alt="next"]');
+
   return {
     current_page: {
       number: currentPageNum,
       pid: currentPageURL.searchParams.get("pid") ? parseInt(currentPageURL.searchParams.get("pid")) : 0
     },
-    max_page: {
-      number: maxPage ? parseInt(maxPage.textContent) : 1,
-      pid: maxPage ? getPid(maxPage.href) : 0
-    },
     next_page: nextPage ? {
       number: currentPageNum + 1,
-      pid: nextPage ? getPid(nextPage.href) : 0
+      pid: nextPage ? getPidFromURL(nextPage.href) : 0
     } : null
   }
 }

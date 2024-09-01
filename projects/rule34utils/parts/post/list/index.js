@@ -2,7 +2,7 @@ import _ from "lodash";
 import "./styles.scss";
 import { currentPageURL, formatNumber, formatTagName, parseHTML } from "../../../utils.js";
 import { parsePostListPageContent } from "./parsers.js";
-import { buildTagSidebar, tagClickHandler } from "../base/index.js";
+import { buildPaginationElement, buildTagSidebar, tagClickHandler } from "../base/index.js";
 
 const handlePreviewHover = _.debounce(
   /**
@@ -103,45 +103,6 @@ export function patchPostListPage() {
   document.body.appendChild(contentElm);
 }
 
-function buildPaginationElement(pagination) {
-  const elm = parseHTML(`
-    <div class="pagination">
-      <div class="icon prev ${pagination.current_page.number <= 1 ? "disabled" : ""}">
-        <i class="ri-arrow-left-s-line"></i>
-      </div>
-      <input type="number" value="${pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
-      <div class="icon next ${!pagination.next_page ? "disabled" : ""}">
-        <i class="ri-arrow-right-s-line"></i>
-      </div>
-    </div>
-  `);
-
-  const prevElm = elm.querySelector(".prev");
-  const nextElm = elm.querySelector(".next");
-  const pageInput = elm.querySelector("input");
-
-  pageInput.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") {
-      const url = new URL(location.href);
-      url.searchParams.set("pid", Math.max(pageInput.value - 1, 0) * 42);
-      location.href = url.href;
-    }
-  });
-
-  prevElm.addEventListener("click", () => {
-    const url = new URL(location.href);
-    url.searchParams.set("pid", Math.max(pagination.current_page.pid - 42, 0));
-    location.href = url.href;
-  });
-
-  nextElm.addEventListener("click", () => {
-    const url = new URL(location.href);
-    url.searchParams.set("pid", pagination.current_page.pid + 42);
-    location.href = url.href;
-  });
-
-  return elm;
-}
 
 /**
  * @param {HTMLDivElement} postListElm 
@@ -151,9 +112,29 @@ function patchPostListElement(postListElm, content) {
   patchPostListPostsElement(postListElm.querySelector(".posts"), content);
 
   if (content.pagination) {
-    postListElm.prepend(buildPaginationElement(content.pagination));
-    postListElm.appendChild(buildPaginationElement(content.pagination));
+    postListElm.prepend(buildListViewPaginationElement(content.pagination));
+    postListElm.appendChild(buildListViewPaginationElement(content.pagination));
   }
+}
+
+function buildListViewPaginationElement(pagination) {
+  return buildPaginationElement(pagination, {
+    input(num) {
+      const url = new URL(location.href);
+      url.searchParams.set("pid", Math.max(num - 1, 0) * 42);
+      location.href = url.href;
+    },
+    prev() {
+      const url = new URL(location.href);
+      url.searchParams.set("pid", Math.max(pagination.current_page.pid - 42, 0));
+      location.href = url.href;
+    },
+    next() {
+      const url = new URL(location.href);
+      url.searchParams.set("pid", pagination.current_page.pid + 42);
+      location.href = url.href;
+    }
+  });
 }
 
 /**

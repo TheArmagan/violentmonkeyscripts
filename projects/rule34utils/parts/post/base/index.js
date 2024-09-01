@@ -306,3 +306,42 @@ function patchSidebarTagSectionsElement(tagsSectionElm, sidebarTags) {
   });
 
 }
+
+/**
+ * @param {any} pagination 
+ * @param {{ input(num: number): void, prev(): void, next(): void, }} callbacks 
+ * @returns 
+ */
+export function buildPaginationElement(pagination, callbacks = {}) {
+  const elm = parseHTML(`
+    <div class="r34u--pagination">
+      <div class="icon prev ${pagination.current_page.number <= 1 ? "disabled" : ""}">
+        <i class="ri-arrow-left-s-line"></i>
+      </div>
+      <input type="number" value="${pagination.current_page.number}" min="1" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false" />
+      <div class="icon next ${!pagination.next_page ? "disabled" : ""}">
+        <i class="ri-arrow-right-s-line"></i>
+      </div>
+    </div>
+  `);
+
+  const prevElm = elm.querySelector(".prev");
+  const nextElm = elm.querySelector(".next");
+  const pageInput = elm.querySelector("input");
+
+  pageInput.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      callbacks.input(Math.max(pageInput.value, 0));
+    }
+  });
+
+  prevElm.addEventListener("click", () => {
+    callbacks.prev();
+  });
+
+  nextElm.addEventListener("click", () => {
+    callbacks.next();
+  });
+
+  return elm;
+}
