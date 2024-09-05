@@ -28,6 +28,7 @@ esbuild.build({
 // @grant       none
 // @version     ${package.version}
 // @author      TheArmagan
+// @license     GPL-3.0-only
 // @description ${new Date().toISOString()}
 // ==/UserScript==\n${content}`;
   fs.writeFileSync(outPath, content);
