@@ -2,6 +2,7 @@ const fs = require("fs");
 const { plsParseArgs } = require("plsargs");
 const esbuild = require("esbuild");
 const { sassPlugin } = require("esbuild-sass-plugin");
+const package = require("./package.json");
 
 const args = plsParseArgs(process.argv.slice(2));
 
@@ -25,7 +26,7 @@ esbuild.build({
 // @namespace   ${args.get("namespace")}
 // @match       ${args.get("match")}
 // @grant       none
-// @version     1.0
+// @version     ${package.version}
 // @author      TheArmagan
 // @description ${new Date().toISOString()}
 // ==/UserScript==\n${content}`;

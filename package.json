@@ -1,6 +1,6 @@
 {
   "name": "violentmonkeyscripts",
-  "version": "1.0.0",
+  "version": "0.0.1",
   "description": "",
   "main": "index.js",
   "scripts": {
@@ -8,7 +8,7 @@
     "http-server": "cd ./dist && pnpx http-server -c-1 -p8081"
   },
   "keywords": [],
-  "author": "",
+  "author": "Kıraç Armağan Önal",
   "license": "ISC",
   "devDependencies": {
     "@types/node": "^22.5.0",
