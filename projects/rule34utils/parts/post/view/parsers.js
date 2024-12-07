@@ -24,7 +24,7 @@ function parseViewContent(elm, sidebarTags) {
     id: parseInt(currentPageURL.searchParams.get("id")),
     is_video: sidebarTags.some(i => i.name === "video"),
     is_animation: sidebarTags.some(i => i.name === "animated"),
-    url: elm.querySelector("source")?.src ?? elm.querySelector("#fit-to-screen img[alt]")?.src
+    url: elm.querySelector("source")?.src ?? document.querySelector('a[onclick^="Post.highres();"]')?.href?.split("?")?.[0] ?? elm.querySelector("#fit-to-screen img[alt]")?.src
   };
 }
 
@@ -40,8 +40,8 @@ export function parseViewPostComments(elm) {
       return {
         id: parseInt(commentElm.id.slice(1)),
         author: commentElm.querySelector(".col1 > a").textContent,
-        date: new Date(commentElm.querySelector(".col1 > b").childNodes[0].textContent.split(/ |\n/).slice(3, 5).join(" ")),
-        score: parseInt(commentElm.querySelector(".col1 > b > a[id]").textContent),
+        date: new Date(commentElm.querySelector('.col1 a[id^="sc"]').parentElement.textContent.replace(/ +/, " ").split(" ").slice(3, 5).join(" ")),
+        score: parseInt(commentElm.querySelector('.col1 a[id^="sc"]').textContent),
         content: commentElm.querySelector(".col2").textContent.trim()
       }
     }),
