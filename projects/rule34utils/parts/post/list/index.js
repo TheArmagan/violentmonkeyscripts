@@ -165,10 +165,10 @@ function patchPostListPostsElement(postsElm, content) {
     post.tags.forEach((tag) => {
       /** @type {HTMLSpanElement} */
       const tagElm = parseHTML(`
-        <span class="tag" title="Click to set tag, ctrl+click to add tag or shift+click to exclude tag.">
+        <a class="tag" title="Click to set tag, ctrl+click to add tag or shift+click to exclude tag." href="https://rule34.xxx/index.php?page=post&s=list&tags=${tag.name}">
           <span class="name">${formatTagName(tag.name)}</span>
           ${tag.count ? `<span class="count">${formatNumber(tag.count)}</span>` : ""}
-        </span>
+        </a>
       `);
 
       tagElm.addEventListener("click", tagClickHandler(tag));
