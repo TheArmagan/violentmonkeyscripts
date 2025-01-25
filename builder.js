@@ -25,7 +25,8 @@ esbuild.build({
 // @name        ${args.get("name")} 
 // @namespace   ${args.get("namespace")}
 // @match       ${args.get("match")}
-// @grant       none
+// @grant       GM_getValue
+// @grant       GM_setValue
 // @version     ${package.version}
 // @author      TheArmagan
 // @license     GPL-3.0-only
