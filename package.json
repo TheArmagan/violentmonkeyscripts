@@ -7,19 +7,28 @@
     "build:r34u": "node builder.js --name rule34utils --namespace rule34utils --match 'https://rule34.xxx/index.php*' --file projects/rule34utils/index.js --outfile dist/rule34utils.user.js",
     "build:gxm": "node builder.js --name gxmodsforall --namespace gxmodsforall --match '*://*/*' --file projects/gxmodsforall/index.js --outfile dist/gxmodsforall.user.js",
     "build:pixiv": "node builder.js --name pixivutils --namespace pixivutils --match 'https://www.pixiv.net/*' --file projects/pixivutils/index.js --outfile dist/pixivutils.user.js",
-    "build:boothkit": "node builder.js --name boothkit --namespace boothkit --match 'https://booth.pm/*' --file projects/boothkit/index.ts --outfile dist/boothkit.user.js",
+    "build:boothkit": "node builder.js --name boothkit --namespace boothkit --match 'https://booth.pm/*' --file projects/boothkit/index.ts --outfile dist/boothkit.user.js --svelte --tailwind",
     "http-server": "cd ./dist && pnpx http-server -c-1 -p8081"
   },
   "keywords": [],
   "author": "Kıraç Armağan Önal",
   "license": "GPL-3.0-only",
   "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^22.5.0",
-    "esbuild": "^0.23.1"
+    "autoprefixer": "^10.4.22",
+    "esbuild": "^0.23.1",
+    "esbuild-svelte": "^0.9.3",
+    "postcss": "^8.5.6",
+    "svelte": "^5.45.2",
+    "svelte-preprocess": "^6.0.3",
+    "tailwindcss": "^4.1.17",
+    "typescript": "^5.9.3"
   },
   "dependencies": {
     "esbuild-sass-plugin": "^3.3.1",
     "lodash": "^4.17.21",
+    "lucide-static": "^0.555.0",
     "masonry-layout": "^4.2.2",
     "plsargs": "^0.1.6"
   }
