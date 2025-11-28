@@ -15,6 +15,7 @@
     for (const [key, value] of Object.entries(rest)) {
       svg.setAttribute(key, value as string);
     }
+    svg.style.color = `var(--foreground)`;
     return svg;
   });
 </script>

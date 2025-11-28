@@ -24,34 +24,144 @@
     children,
     ...restProps
   }: Props = $props();
-
-  const baseStyles =
-    "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50";
-
-  const variants: Record<Variant, string> = {
-    default: "bg-primary text-primary-foreground shadow hover:bg-primary/90",
-    destructive:
-      "bg-destructive text-destructive-foreground shadow-sm hover:bg-destructive/90",
-    outline:
-      "border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground",
-    secondary:
-      "bg-secondary text-secondary-foreground shadow-sm hover:bg-secondary/80",
-    ghost: "hover:bg-accent hover:text-accent-foreground",
-    link: "text-primary underline-offset-4 hover:underline",
-  };
-
-  const sizes: Record<Size, string> = {
-    default: "h-9 px-4 py-2",
-    sm: "h-8 rounded-md px-3 text-xs",
-    lg: "h-10 rounded-md px-8",
-    icon: "h-9 w-9",
-  };
-
-  const computedClass = `${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`;
 </script>
 
-<button class={computedClass} {...restProps}>
+<button class="btn btn-{variant} btn-{size} {className}" {...restProps}>
   {#if children}
     {@render children()}
   {/if}
 </button>
+
+<style>
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    border-radius: 0.375rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition:
+      color 0.2s ease,
+      background-color 0.2s ease,
+      border-color 0.2s ease,
+      box-shadow 0.2s ease,
+      transform 0.15s ease;
+    cursor: pointer;
+    border: none;
+  }
+
+  .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--ring, #3b82f6);
+  }
+
+  .btn:disabled {
+    pointer-events: none;
+    opacity: 0.5;
+  }
+
+  /* Variants */
+  .btn-default {
+    background-color: var(--primary);
+    color: var(--primary-foreground);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .btn-default:hover {
+    background-color: var(--primary-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  .btn-default:active {
+    transform: scale(0.98);
+  }
+
+  .btn-destructive {
+    background-color: var(--destructive);
+    color: var(--destructive-foreground);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  }
+  .btn-destructive:hover {
+    background-color: var(--destructive-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+  }
+  .btn-destructive:active {
+    transform: scale(0.98);
+  }
+
+  .btn-outline {
+    border: 1px solid var(--input);
+    background-color: var(--background);
+    color: var(--foreground);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .btn-outline:hover {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+    border-color: var(--primary);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  .btn-outline:active {
+    transform: scale(0.98);
+  }
+
+  .btn-secondary {
+    background-color: var(--secondary);
+    color: var(--secondary-foreground);
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  }
+  .btn-secondary:hover {
+    background-color: var(--secondary-hover);
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+  }
+  .btn-secondary:active {
+    transform: scale(0.98);
+  }
+
+  .btn-ghost {
+    background-color: transparent;
+  }
+  .btn-ghost:hover {
+    background-color: var(--accent);
+    color: var(--accent-foreground);
+  }
+  .btn-ghost:active {
+    transform: scale(0.98);
+  }
+
+  .btn-link {
+    background-color: transparent;
+    color: var(--primary);
+    text-underline-offset: 4px;
+  }
+  .btn-link:hover {
+    text-decoration: underline;
+    color: var(--primary-hover);
+  }
+
+  /* Sizes */
+  .btn-default-size,
+  .btn-default {
+    height: 2.25rem;
+    padding: 0.5rem 1rem;
+  }
+
+  .btn-sm {
+    height: 2rem;
+    padding: 0.25rem 0.75rem;
+    font-size: 0.75rem;
+    border-radius: 0.375rem;
+  }
+
+  .btn-lg {
+    height: 2.5rem;
+    padding: 0.5rem 2rem;
+    border-radius: 0.375rem;
+  }
+
+  .btn-icon {
+    height: 2.25rem;
+    width: 2.25rem;
+    min-width: 2.25rem;
+    padding: 0;
+  }
+</style>

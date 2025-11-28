@@ -497,10 +497,58 @@ function parseCategoryName(doc: Document): string {
   return h1?.textContent?.trim() ?? "";
 }
 
+// ============ Wishlist Counts Fetcher ============
+
+interface WishlistCountsResponse {
+  item_ids: number[];
+  wishlists_counts: Record<string, number>;
+}
+
+async function fetchWishlistCounts(itemIds: string[]): Promise<Record<string, number>> {
+  if (itemIds.length === 0) return {};
+
+  try {
+    // Build URL with item_ids[] params
+    const url = new URL("https://accounts.booth.pm/wish_lists.json");
+    itemIds.forEach(id => {
+      url.searchParams.append("item_ids[]", id);
+    });
+
+    const response = await fetch(url.toString(), {
+      credentials: "include", // Include cookies for auth
+    });
+
+    if (!response.ok) {
+      console.warn("[BoothKit] Failed to fetch wishlist counts:", response.status);
+      return {};
+    }
+
+    const data: WishlistCountsResponse = await response.json();
+    return data.wishlists_counts ?? {};
+  } catch (error) {
+    console.warn("[BoothKit] Error fetching wishlist counts:", error);
+    return {};
+  }
+}
+
 // ============ Main Parser ============
 
-export function parseBrowsePage(htmlString: string): BrowsePage {
+export async function parseBrowsePage(htmlString: string): Promise<BrowsePage> {
   const doc = parseHTMLString(htmlString);
+
+  // Parse items first
+  const items = parseItems(doc);
+
+  // Fetch wishlist counts for all items
+  const itemIds = items.map(item => item.id).filter(Boolean);
+  const wishlistCounts = await fetchWishlistCounts(itemIds);
+
+  // Update items with wishlist counts
+  items.forEach(item => {
+    if (wishlistCounts[item.id] !== undefined) {
+      item.wishListCount = wishlistCounts[item.id];
+    }
+  });
 
   return {
     meta: parseMeta(doc),
@@ -509,7 +557,7 @@ export function parseBrowsePage(htmlString: string): BrowsePage {
     categoryName: parseCategoryName(doc),
     totalResults: parseTotalResults(doc),
     categoryTags: parseCategoryTags(doc),
-    items: parseItems(doc),
+    items,
     pagination: parsePagination(doc),
     recentViewedItems: parseRecentViewedItems(doc),
     otherCategories: parseOtherCategories(doc),
@@ -517,10 +565,10 @@ export function parseBrowsePage(htmlString: string): BrowsePage {
   };
 }
 
-export function fetchAndParseBrowsePage(url: string): Promise<BrowsePage> {
-  return fetch(url)
-    .then(response => response.text())
-    .then(htmlString => parseBrowsePage(htmlString));
+export async function fetchAndParseBrowsePage(url: string): Promise<BrowsePage> {
+  const response = await fetch(url);
+  const htmlString = await response.text();
+  return parseBrowsePage(htmlString);
 }
 
 // ============ Utility Exports ============
