@@ -6,7 +6,7 @@ const package = require("./package.json");
 
 const args = plsParseArgs(process.argv.slice(2));
 
-esbuild.build({
+const config = {
   entryPoints: [args.get("file")],
   bundle: true,
   minify: true,
@@ -18,7 +18,31 @@ esbuild.build({
       type: "style"
     })
   ]
-}).then(() => {
+};
+
+(async () => {
+  if (!args.has("watch")) {
+    console.log("Building...");
+    esbuild.build(config).then(appendHead);
+  } else {
+    console.log("Watching...");
+    const ctx = await esbuild.context({
+      ...config,
+      plugins: [
+        ...config.plugins,
+        {
+          name: "append-head",
+          setup(build) {
+            build.onEnd(appendHead);
+          }
+        }
+      ]
+    });
+    ctx.watch();
+  }
+})();
+
+function appendHead() {
   const outPath = args.get("outfile");
   let content = fs.readFileSync(outPath, "utf8");
   content = `// ==UserScript==
@@ -33,5 +57,6 @@ esbuild.build({
 // @description ${new Date().toISOString()}
 // ==/UserScript==\n${content}`;
   fs.writeFileSync(outPath, content);
-});
+  console.log(`[${new Date().toLocaleString()}] Built ${outPath}`);
+}
 
