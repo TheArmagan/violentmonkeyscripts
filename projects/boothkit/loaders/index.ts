@@ -149,7 +149,13 @@ export async function runLoaders(url: string = window.location.href) {
     if (!preparationNeeded) {
       const response = await currentLoader.load();
 
-      document.body.innerHTML = ""; // Clear existing content
+      [...document.body.children].forEach(child => {
+        if (child.id !== "booth-searcher-shadow-root") {
+          child.remove();
+        } else {
+          child.setAttribute("style", "border-radius: 8px; scale: 0.75; transform-origin: bottom right;");
+        }
+      });
 
       injectComponent(Main, {
         pageType: response.pageType,

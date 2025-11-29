@@ -24,7 +24,6 @@ async function fetchAndParse(url: string) {
 async function load() {
   console.log("Boothkit item loader loaded.");
   const parsedPage = await parseItemPage(document.documentElement.outerHTML);
-  console.log(parsedPage);
 
   return {
     pageType: "item",

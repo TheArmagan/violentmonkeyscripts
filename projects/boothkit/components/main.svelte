@@ -81,7 +81,7 @@
 
   <nav class="navbar">
     <div class="nav-left">
-      {#if pageType === "browse"}
+      {#if pageType === "browse" || pageType === "item"}
         <Button
           variant="ghost"
           size="icon"
@@ -89,7 +89,11 @@
           aria-label="Toggle sidebar"
           class="sidebar-toggle"
         >
-          <Icon icon="Menu" width="20" height="20" />
+          <Icon
+            icon={isSidebarOpen ? "PanelLeftClose" : "PanelLeft"}
+            width="20"
+            height="20"
+          />
         </Button>
       {/if}
       <a href="/" class="nav-title">BoothKit</a>
