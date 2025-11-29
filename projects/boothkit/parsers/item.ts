@@ -373,42 +373,58 @@ function parseMedia(doc: Document): ItemPageMedia {
   const images: ItemPageImage[] = [];
   const videos: ItemPageVideo[] = [];
 
-  // Parse images from slick slider
-  const imageSlides = doc.querySelectorAll('.slick-slide:not(.slick-cloned) .market-item-detail-item-image-wrapper');
+  // Track seen URLs to avoid duplicates
+  const seenImageUrls = new Set<string>();
+  const seenVideoUrls = new Set<string>();
 
-  imageSlides.forEach(wrapper => {
-    // Check for iframe (video)
-    const iframe = wrapper.querySelector("iframe");
-    if (iframe) {
-      const src = iframe.getAttribute("src") ?? "";
-      if (src.includes("youtube.com") || src.includes("youtu.be")) {
-        videos.push({
-          type: "youtube",
-          embedUrl: src,
-        });
-      } else {
-        videos.push({
-          type: "other",
-          embedUrl: src,
-        });
+  // Get all media wrappers from primary-image-area (direct children approach - works with or without slick)
+  const primaryImageArea = doc.querySelector(".primary-image-area");
+
+  if (primaryImageArea) {
+    // Get all market-item-detail-item-image-wrapper elements
+    const wrappers = primaryImageArea.querySelectorAll(".market-item-detail-item-image-wrapper");
+
+    wrappers.forEach(wrapper => {
+      // Check for iframe (video)
+      const iframe = wrapper.querySelector("iframe");
+      if (iframe) {
+        const src = iframe.getAttribute("src") ?? "";
+        if (src && !seenVideoUrls.has(src)) {
+          seenVideoUrls.add(src);
+          if (src.includes("youtube.com") || src.includes("youtu.be")) {
+            videos.push({
+              type: "youtube",
+              embedUrl: src,
+            });
+          } else {
+            videos.push({
+              type: "other",
+              embedUrl: src,
+            });
+          }
+        }
+        return;
       }
-      return;
-    }
 
-    // Parse image
-    const img = wrapper.querySelector("img.market-item-detail-item-image");
-    if (img) {
-      const thumbnailUrl = img.getAttribute("src") ?? img.getAttribute("data-lazy") ?? "";
-      const originalUrl = img.getAttribute("data-origin") ?? thumbnailUrl;
+      // Parse image
+      const img = wrapper.querySelector("img.market-item-detail-item-image");
+      if (img) {
+        // For thumbnail: prefer src, fallback to data-lazy
+        const thumbnailUrl = img.getAttribute("src") || img.getAttribute("data-lazy") || "";
+        // For original: always use data-origin if available
+        const originalUrl = img.getAttribute("data-origin") || thumbnailUrl;
 
-      if (thumbnailUrl || originalUrl) {
-        images.push({
-          thumbnailUrl,
-          originalUrl,
-        });
+        // Use originalUrl as unique key to avoid duplicates
+        if (originalUrl && !seenImageUrls.has(originalUrl)) {
+          seenImageUrls.add(originalUrl);
+          images.push({
+            thumbnailUrl,
+            originalUrl,
+          });
+        }
       }
-    }
-  });
+    });
+  }
 
   return { images, videos };
 }
