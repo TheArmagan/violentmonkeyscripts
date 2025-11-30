@@ -126,10 +126,7 @@
     if (isDeepScanningAll) return;
     isDeepScanningAll = true;
 
-    // Scan top results (limit to 20 for performance)
-    const toScan = activeResults.slice(0, 20);
-
-    for (const result of toScan) {
+    for (const result of transformedResults) {
       if (!deepScanResults.has(result.id)) {
         await performDeepScan(result);
       }
