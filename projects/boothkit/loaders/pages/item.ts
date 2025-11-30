@@ -2,8 +2,9 @@ import { parseItemPage } from "../../parsers/booth/item";
 
 function isThisPage(href: string) {
   const url = new URL(href);
-  const parts = url.pathname.split("/");
-  return parts[2] === 'items' && parts.length === 4;
+  const pathnameParts = url.pathname.split("/");
+  const hostnameParts = url.hostname.split(".");
+  return hostnameParts.length === 2 && pathnameParts[2] === 'items' && pathnameParts.length === 4;
 }
 
 function preparePage(href: string) {

@@ -100,7 +100,7 @@ function appendHead() {
   content = `// ==UserScript==
 // @name        ${args.get("name")} 
 // @namespace   ${args.get("namespace")}
-// @match       ${args.get("match")}
+${args.has('include') ? `// @include     ${args.get('include')}` : args.has('match') ? `// @match       ${args.get('match')}` : ''}
 // @grant       GM_getValue
 // @grant       GM_setValue
 // @grant       GM_xmlhttpRequest

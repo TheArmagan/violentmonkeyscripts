@@ -4,13 +4,17 @@ import Main from "../components/main.svelte";
 import { landingLoader } from "./pages/landing";
 import { browseLoader } from "./pages/browse";
 import { itemLoader } from "./pages/item";
+import { shopItemLoader } from "./pages/shop-item";
+import { shopLandingLoader } from "./pages/shop-landing";
 
 import { injectComponent } from "../utils/svelte";
 
 export const loaders = [
   landingLoader,
   browseLoader,
-  itemLoader
+  itemLoader,
+  shopItemLoader,
+  shopLandingLoader
 ];
 
 export type Loader = typeof loaders[number];
@@ -84,6 +88,18 @@ export async function navigate(url: string): Promise<boolean> {
 }
 
 /**
+ * Check if a URL is a booth.pm domain (including subdomains)
+ */
+function isBoothUrl(url: string): boolean {
+  try {
+    const parsedUrl = new URL(url);
+    return parsedUrl.hostname === "booth.pm" || parsedUrl.hostname.endsWith(".booth.pm");
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Setup link interception for hot-reload navigation
  */
 function setupLinkInterception() {
@@ -96,7 +112,7 @@ function setupLinkInterception() {
     const href = anchor.getAttribute("href");
     if (!href) return;
 
-    // Skip external links, hash links, and special protocols
+    // Skip hash links, special protocols, and _blank targets
     if (href.startsWith("#") ||
       href.startsWith("javascript:") ||
       href.startsWith("mailto:") ||
@@ -107,6 +123,9 @@ function setupLinkInterception() {
 
     // Convert relative URLs to absolute
     const absoluteUrl = new URL(href, window.location.origin).toString();
+
+    // Check if this is a booth.pm URL (including subdomains)
+    if (!isBoothUrl(absoluteUrl)) return;
 
     // Check if we have a loader for this URL
     const loader = findLoader(absoluteUrl);

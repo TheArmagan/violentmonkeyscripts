@@ -197,9 +197,19 @@
     {#if item.badges.length > 0}
       <div class="badges">
         {#each item.badges as badge}
-          <a href={badge.url} class="badge" title={badge.name}>
-            <img src={badge.imageUrl} alt={badge.name} />
-          </a>
+          {#if badge.imageUrl}
+            <a href={badge.url || "#"} class="badge" title={badge.name}>
+              <img src={badge.imageUrl} alt={badge.name} />
+            </a>
+          {:else if badge.name}
+            <a
+              href={badge.url || "#"}
+              class="badge badge-text"
+              title={badge.name}
+            >
+              <span>{badge.name}</span>
+            </a>
+          {/if}
         {/each}
       </div>
     {/if}
@@ -511,12 +521,25 @@
   .badge {
     display: block;
     height: 1.5rem;
+    text-decoration: none;
   }
 
   .badge img {
     height: 100%;
     width: auto;
     border-radius: 0.25rem;
+  }
+
+  .badge-text {
+    display: flex;
+    align-items: center;
+    padding: 0 0.5rem;
+    background-color: rgba(0, 0, 0, 0.7);
+    color: white;
+    font-size: 0.625rem;
+    font-weight: 600;
+    border-radius: 0.25rem;
+    text-transform: uppercase;
   }
 
   /* Content Section */

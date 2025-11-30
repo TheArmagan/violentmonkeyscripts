@@ -7,6 +7,8 @@
   import BrowsePage from "./list/browse-page.svelte";
   import ItemPage from "./list/item-page.svelte";
   import LandingPage from "./list/landing-page.svelte";
+  import ShopItemPage from "./list/shop-item-page.svelte";
+  import ShopLandingPage from "./list/shop-landing-page.svelte";
   import { navigate } from "../loaders";
 
   let isDarkTheme = $state(false);
@@ -97,7 +99,7 @@
           />
         </Button>
       {/if}
-      <a href="/" class="nav-title">BoothKit</a>
+      <a href="https://booth.pm/" class="nav-title">BoothKit</a>
     </div>
     <div class="nav-center">
       <div class="nav-search-container">
@@ -161,6 +163,22 @@
       />
     {:else if pageType === "landing"}
       <LandingPage
+        {parsedPage}
+        {pageType}
+        {loadPage}
+        {isSidebarOpen}
+        onSidebarToggle={(open) => (isSidebarOpen = open)}
+      />
+    {:else if pageType === "shop-item"}
+      <ShopItemPage
+        {parsedPage}
+        {pageType}
+        {loadPage}
+        {isSidebarOpen}
+        onSidebarToggle={(open) => (isSidebarOpen = open)}
+      />
+    {:else if pageType === "shop-landing"}
+      <ShopLandingPage
         {parsedPage}
         {pageType}
         {loadPage}
