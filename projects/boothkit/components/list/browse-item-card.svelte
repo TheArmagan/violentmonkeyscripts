@@ -1,5 +1,5 @@
 <script lang="ts">
-  import type { BrowsePageItem } from "../../parsers/browse";
+  import type { BrowsePageItem } from "../../parsers/booth/browse";
   import Icon from "../lib/icon.svelte";
 
   let {

@@ -6,6 +6,7 @@
   import { fetchAutocompleteTags } from "../api/autocomplete";
   import BrowsePage from "./list/browse-page.svelte";
   import ItemPage from "./list/item-page.svelte";
+  import LandingPage from "./list/landing-page.svelte";
   import { navigate } from "../loaders";
 
   let isDarkTheme = $state(false);
@@ -81,7 +82,7 @@
 
   <nav class="navbar">
     <div class="nav-left">
-      {#if pageType === "browse" || pageType === "item"}
+      {#if pageType === "browse" || pageType === "item" || pageType === "landing"}
         <Button
           variant="ghost"
           size="icon"
@@ -152,6 +153,14 @@
       />
     {:else if pageType === "item"}
       <ItemPage
+        {parsedPage}
+        {pageType}
+        {loadPage}
+        {isSidebarOpen}
+        onSidebarToggle={(open) => (isSidebarOpen = open)}
+      />
+    {:else if pageType === "landing"}
+      <LandingPage
         {parsedPage}
         {pageType}
         {loadPage}

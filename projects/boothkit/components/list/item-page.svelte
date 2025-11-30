@@ -3,9 +3,18 @@
     ItemPage,
     ItemPageImage,
     ItemPageVideo,
-  } from "../../parsers/item";
+  } from "../../parsers/booth/item";
+  import type {
+    SearchPage,
+    ItemSearchResult,
+  } from "../../parsers/ripperstore/search";
+  import {
+    searchBoothItemSmart,
+    SearchResultTransformer,
+  } from "../../parsers/ripperstore/search";
   import Button from "../lib/button.svelte";
   import Icon from "../lib/icon.svelte";
+  import ItemDownloadCard from "./item-download-card.svelte";
 
   let {
     parsedPage = $bindable<any>({}),
@@ -27,6 +36,100 @@
   let lightboxIndex = $state(0);
   let preloadedImages = $state(new Set<string>());
   let isLightboxImageLoading = $state(false);
+
+  // Download search state
+  let downloadSearchResult = $state<ItemSearchResult | null>(null);
+  let downloadSearchPage = $state<SearchPage | null>(null);
+  let isDownloadSearching = $state(false);
+  let downloadSearchError = $state<string | null>(null);
+  let isDownloadSectionExpanded = $state(false);
+
+  // Get item data from parsed page
+  let itemId = $derived(parsedPage.product?.id || "");
+  let productName = $derived(parsedPage.product?.name || "");
+  let shopName = $derived(parsedPage.shop?.name || "");
+
+  // Search for downloads using comprehensive search
+  async function searchForDownloads() {
+    if (!itemId) {
+      downloadSearchError = "No item ID available";
+      return;
+    }
+
+    isDownloadSearching = true;
+    downloadSearchError = null;
+    isDownloadSectionExpanded = true;
+
+    try {
+      // Use smart search that tries item ID first, then falls back to name-based searches
+      downloadSearchResult = await searchBoothItemSmart(
+        itemId,
+        productName,
+        shopName
+      );
+
+      // Create a compatible SearchPage object for ItemDownloadCard
+      // Combine results from all strategies
+      if (downloadSearchResult.searchResults.length > 0) {
+        const primarySearch = downloadSearchResult.searchResults[0];
+        downloadSearchPage = {
+          results: {
+            totalResults: downloadSearchResult.totalUniqueResults,
+            searchTime: downloadSearchResult.searchResults.reduce(
+              (sum, s) => sum + s.searchTime,
+              0
+            ),
+            searchTimeText: `${downloadSearchResult.strategiesUsed.length} search strategies used`,
+            query: itemId,
+            posts: [], // Posts are transformed in downloadSearchResult.results
+          },
+          // These are used by ItemDownloadCard
+          meta: {} as any,
+          config: {} as any,
+          user: null,
+          query: {} as any,
+          pagination: {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPrevPage: false,
+            pages: [],
+          },
+          filterOptions: {} as any,
+        };
+      }
+    } catch (err) {
+      downloadSearchError =
+        (err as Error).message || "Failed to search for downloads";
+    } finally {
+      isDownloadSearching = false;
+    }
+  }
+
+  // Refresh downloads search
+  function refreshDownloads() {
+    downloadSearchResult = null;
+    downloadSearchPage = null;
+    searchForDownloads();
+  }
+
+  // Track the last searched item ID to detect changes
+  let lastSearchedItemId = $state<string | null>(null);
+
+  // Reset and re-search when item ID changes
+  $effect(() => {
+    if (itemId && itemId !== lastSearchedItemId) {
+      // Reset search state when item changes
+      downloadSearchResult = null;
+      downloadSearchPage = null;
+      downloadSearchError = null;
+      isDownloadSectionExpanded = false;
+      lastSearchedItemId = itemId;
+
+      // Auto-search for the new item
+      searchForDownloads();
+    }
+  });
 
   // Combine images and videos into a unified media list
   type MediaItem =
@@ -422,6 +525,73 @@
               <span>{(parsedPage.wishListCount || 0).toLocaleString()}</span>
             </div>
 
+            <!-- Downloads Status Badge -->
+            {#if itemId}
+              <button
+                class="download-status-badge"
+                class:loading={isDownloadSearching}
+                class:has-results={downloadSearchPage &&
+                  downloadSearchPage.results.totalResults > 0}
+                class:no-results={downloadSearchPage &&
+                  downloadSearchPage.results.totalResults === 0}
+                onclick={() => {
+                  if (downloadSearchPage) {
+                    isDownloadSectionExpanded = !isDownloadSectionExpanded;
+                    // Scroll to downloads section when expanding
+                    if (!isDownloadSectionExpanded === false) {
+                      setTimeout(() => {
+                        document
+                          .getElementById("downloads-section")
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      }, 50);
+                    }
+                  } else {
+                    searchForDownloads().then(() => {
+                      setTimeout(() => {
+                        document
+                          .getElementById("downloads-section")
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "start",
+                          });
+                      }, 50);
+                    });
+                  }
+                }}
+                title={isDownloadSearching
+                  ? "Searching..."
+                  : downloadSearchPage
+                    ? `${downloadSearchPage.results.totalResults} downloads found`
+                    : "Search for downloads"}
+              >
+                {#if isDownloadSearching}
+                  <Icon icon="Loader2" width="16" height="16" class="spin" />
+                  <span>Searching...</span>
+                {:else if downloadSearchPage}
+                  <Icon icon="Download" width="16" height="16" />
+                  <span
+                    >{downloadSearchPage.results.totalResults} Download{downloadSearchPage
+                      .results.totalResults !== 1
+                      ? "s"
+                      : ""}</span
+                  >
+                  <Icon
+                    icon={isDownloadSectionExpanded
+                      ? "ChevronUp"
+                      : "ChevronDown"}
+                    width="14"
+                    height="14"
+                  />
+                {:else}
+                  <Icon icon="Download" width="16" height="16" />
+                  <span>Find Downloads</span>
+                {/if}
+              </button>
+            {/if}
+
             {#if parsedPage.product?.categoryName}
               <div class="meta-badge" title="Category">
                 <Icon icon="Folder" width="16" height="16" />
@@ -473,16 +643,6 @@
                             : "Out of stock"}
                         </span>
                       {/if}
-                      {#if variation.isAvailable}
-                        <Button size="sm" variant="default">
-                          <Icon icon="ShoppingCart" width="14" height="14" />
-                          Add to Cart
-                        </Button>
-                      {:else}
-                        <Button size="sm" variant="secondary" disabled>
-                          Sold Out
-                        </Button>
-                      {/if}
                     </div>
                   </div>
                 {/each}
@@ -491,6 +651,40 @@
           {/if}
         </section>
       </div>
+
+      <!-- Downloads Section -->
+      {#if isDownloadSectionExpanded || downloadSearchPage}
+        <div class="downloads-section" id="downloads-section">
+          <div class="downloads-header">
+            <h2 class="downloads-title">
+              <Icon icon="Download" width="20" height="20" />
+              Downloads for Item #{itemId}
+            </h2>
+            <button
+              class="collapse-btn"
+              onclick={() =>
+                (isDownloadSectionExpanded = !isDownloadSectionExpanded)}
+              aria-label={isDownloadSectionExpanded ? "Collapse" : "Expand"}
+            >
+              <Icon
+                icon={isDownloadSectionExpanded ? "ChevronUp" : "ChevronDown"}
+                width="20"
+                height="20"
+              />
+            </button>
+          </div>
+          {#if isDownloadSectionExpanded}
+            <ItemDownloadCard
+              bind:searchPage={downloadSearchPage}
+              searchResult={downloadSearchResult}
+              {itemId}
+              isLoading={isDownloadSearching}
+              error={downloadSearchError}
+              onRefresh={refreshDownloads}
+            />
+          {/if}
+        </div>
+      {/if}
 
       <!-- Description Tabs Section (Full Width Below) -->
       {#if descriptionTabs.length > 0}
@@ -1088,6 +1282,56 @@
     color: var(--secondary-foreground);
   }
 
+  /* Download Status Badge */
+  .download-status-badge {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: linear-gradient(
+      135deg,
+      var(--primary) 0%,
+      color-mix(in srgb, var(--primary) 80%, black) 100%
+    );
+    color: var(--primary-foreground);
+    border: none;
+    border-radius: 2rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+  }
+
+  .download-status-badge:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  }
+
+  .download-status-badge:active {
+    transform: translateY(0);
+  }
+
+  .download-status-badge.loading {
+    background: var(--secondary);
+    color: var(--secondary-foreground);
+    cursor: wait;
+  }
+
+  .download-status-badge.has-results {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
+    color: white;
+  }
+
+  .download-status-badge.no-results {
+    background: var(--secondary);
+    color: var(--muted-foreground);
+  }
+
+  :global(.spin) {
+    animation: spin 1s linear infinite;
+  }
+
   /* Variations Section */
   .variations-section {
     display: flex;
@@ -1165,6 +1409,50 @@
   .variation-stock {
     font-size: 0.75rem;
     color: var(--muted-foreground);
+  }
+
+  /* Downloads Section */
+  .downloads-section {
+    margin-top: 2rem;
+    max-width: 1400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .downloads-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+  }
+
+  .downloads-title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--foreground);
+    margin: 0;
+  }
+
+  .collapse-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    background-color: var(--secondary);
+    border: 1px solid var(--border);
+    border-radius: 0.375rem;
+    color: var(--foreground);
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .collapse-btn:hover {
+    background-color: var(--accent);
+    border-color: var(--primary);
   }
 
   /* Description Tabs Section */

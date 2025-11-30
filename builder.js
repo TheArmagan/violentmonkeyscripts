@@ -103,6 +103,10 @@ function appendHead() {
 // @match       ${args.get("match")}
 // @grant       GM_getValue
 // @grant       GM_setValue
+// @grant       GM_xmlhttpRequest
+// @grant       GM_webRequest
+// @grant       unsafeWindow
+// @connect     *
 // @version     ${package.version}
 // @author      TheArmagan
 // @license     GPL-3.0-only

@@ -1,4 +1,4 @@
-import { parseHTMLString } from "../utils/dom";
+import { parseHTMLString } from "../../utils/dom";
 
 // ============ Type Definitions ============
 

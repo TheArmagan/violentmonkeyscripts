@@ -16,6 +16,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.17",
     "@types/node": "^22.5.0",
+    "@types/tampermonkey": "^5.0.5",
     "autoprefixer": "^10.4.22",
     "esbuild": "^0.23.1",
     "esbuild-svelte": "^0.9.3",
@@ -30,6 +31,7 @@
     "lodash": "^4.17.21",
     "lucide-static": "^0.555.0",
     "masonry-layout": "^4.2.2",
-    "plsargs": "^0.1.6"
+    "plsargs": "^0.1.6",
+    "socket.io-client": "^4.8.1"
   }
 }

@@ -1,11 +1,14 @@
 // @ts-ignore
 import Main from "../components/main.svelte";
-import { browseLoader } from "./pages/browse";
 
-import { injectComponent } from "../utils/svelte";
+import { landingLoader } from "./pages/landing";
+import { browseLoader } from "./pages/browse";
 import { itemLoader } from "./pages/item";
 
+import { injectComponent } from "../utils/svelte";
+
 export const loaders = [
+  landingLoader,
   browseLoader,
   itemLoader
 ];
@@ -149,13 +152,7 @@ export async function runLoaders(url: string = window.location.href) {
     if (!preparationNeeded) {
       const response = await currentLoader.load();
 
-      [...document.body.children].forEach(child => {
-        if (child.id !== "booth-searcher-shadow-root") {
-          child.remove();
-        } else {
-          child.setAttribute("style", "border-radius: 8px; scale: 0.75; transform-origin: bottom right;");
-        }
-      });
+      document.body.innerHTML = "";
 
       injectComponent(Main, {
         pageType: response.pageType,

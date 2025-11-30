@@ -1,4 +1,4 @@
-import { parseBrowsePage } from "../../parsers/browse";
+import { parseBrowsePage } from "../../parsers/booth/browse";
 
 function isThisPage(href: string) {
   const url = new URL(href);

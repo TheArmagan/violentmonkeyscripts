@@ -1,4 +1,4 @@
-import { parseItemPage } from "../../parsers/item";
+import { parseItemPage } from "../../parsers/booth/item";
 
 function isThisPage(href: string) {
   const url = new URL(href);
