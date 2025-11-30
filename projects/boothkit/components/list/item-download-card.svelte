@@ -634,7 +634,26 @@
                             height="16"
                           />
                           <div class="link-text">
-                            <span class="link-name">{link.name}</span>
+                            {#if link.context}
+                              <span class="link-context">
+                                {#if link.contentType}
+                                  <span class="content-type-badge"
+                                    >{link.contentType}</span
+                                  >
+                                {/if}
+                                <span class="link-description"
+                                  >{link.context}</span
+                                >
+                              </span>
+                            {:else if link.contentType}
+                              <span class="link-context">
+                                <span class="content-type-badge"
+                                  >{link.contentType}</span
+                                >
+                              </span>
+                            {:else}
+                              <span class="link-name">{link.name}</span>
+                            {/if}
                             <span class="link-domain-badge">{link.domain}</span>
                           </div>
                           <Icon icon="ExternalLink" width="14" height="14" />
@@ -1360,6 +1379,31 @@
 
   .link-name {
     font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .link-context {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex-wrap: wrap;
+  }
+
+  .content-type-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.25rem;
+    background-color: rgba(139, 92, 246, 0.15);
+    color: #a78bfa;
+    white-space: nowrap;
+  }
+
+  .link-description {
+    font-weight: 500;
+    color: var(--foreground);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

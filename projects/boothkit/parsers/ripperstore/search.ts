@@ -249,6 +249,333 @@ export interface DownloadLink {
   url: string;
   name: string;
   domain: string;
+  /** Contextual description extracted from surrounding text */
+  context?: string;
+  /** Type of content (e.g., "clothing", "avatar", "texture", etc.) */
+  contentType?: string;
+}
+
+/** Patterns for extracting context around download links */
+export const LINK_CONTEXT_PATTERNS = {
+  // Item type patterns - what kind of content this is
+  contentTypes: [
+    // Clothing & Fashion
+    { pattern: /casual\s*clothing/i, type: "Casual Clothing" },
+    { pattern: /formal\s*(?:wear|clothing|outfit)/i, type: "Formal Wear" },
+    { pattern: /(?:school|uniform)\s*(?:outfit|clothing)/i, type: "School Uniform" },
+    { pattern: /swim(?:suit|wear)/i, type: "Swimwear" },
+    { pattern: /underwear|lingerie/i, type: "Underwear" },
+    { pattern: /(?:winter|summer|spring|fall)\s*(?:clothing|outfit|wear)/i, type: "Seasonal Clothing" },
+    { pattern: /(?:hoodie|jacket|coat|sweater)/i, type: "Outerwear" },
+    { pattern: /(?:dress|skirt|pants|shorts|jeans)/i, type: "Clothing" },
+    { pattern: /(?:shirt|top|blouse|t-?shirt)/i, type: "Top" },
+    { pattern: /(?:shoes?|boots?|sneakers?|heels?|sandals?)/i, type: "Footwear" },
+    { pattern: /(?:hat|cap|headwear|helmet)/i, type: "Headwear" },
+    { pattern: /(?:glasses|sunglasses|eyewear)/i, type: "Eyewear" },
+    { pattern: /(?:accessory|accessories|jewelry|necklace|earring|bracelet|ring)/i, type: "Accessories" },
+    { pattern: /(?:bag|backpack|purse|handbag)/i, type: "Bags" },
+    { pattern: /(?:gloves?|mittens?)/i, type: "Gloves" },
+    { pattern: /(?:socks?|stockings?|tights?)/i, type: "Legwear" },
+    { pattern: /(?:mask|face\s*mask)/i, type: "Mask" },
+    { pattern: /(?:costume|cosplay)/i, type: "Costume" },
+    { pattern: /(?:outfit|set|coord|coordinate)/i, type: "Outfit Set" },
+
+    // Avatar & Character
+    { pattern: /(?:full\s*)?avatar/i, type: "Avatar" },
+    { pattern: /(?:base|body)\s*(?:model|mesh)/i, type: "Base Model" },
+    { pattern: /character\s*(?:model|asset)/i, type: "Character" },
+    { pattern: /(?:vroid|vrm)/i, type: "VRoid/VRM" },
+    { pattern: /(?:fbx|blend(?:er)?)\s*(?:file|model)/i, type: "3D Model" },
+
+    // Body Parts & Features
+    { pattern: /hair(?:style)?/i, type: "Hair" },
+    { pattern: /(?:eye|eyes)\s*(?:texture)?/i, type: "Eyes" },
+    { pattern: /(?:skin|body)\s*texture/i, type: "Skin Texture" },
+    { pattern: /(?:face|facial)\s*(?:expression|blend)/i, type: "Face/Expressions" },
+    { pattern: /(?:tail|ear|horn|wing)s?/i, type: "Appendages" },
+    { pattern: /(?:fur|fluffy|furry)/i, type: "Fur" },
+
+    // Props & Objects
+    { pattern: /(?:weapon|sword|gun|bow)/i, type: "Weapon" },
+    { pattern: /(?:prop|object|item)s?/i, type: "Props" },
+    { pattern: /(?:furniture|chair|table|bed)/i, type: "Furniture" },
+    { pattern: /(?:food|drink|beverage)/i, type: "Food/Drink" },
+    { pattern: /(?:vehicle|car|bike|motorcycle)/i, type: "Vehicle" },
+    { pattern: /(?:tool|equipment)/i, type: "Tools" },
+
+    // Environment & World
+    { pattern: /(?:world|map|environment|scene)/i, type: "World/Environment" },
+    { pattern: /(?:skybox|sky\s*(?:dome|box))/i, type: "Skybox" },
+    { pattern: /(?:particle|effect|fx|vfx)/i, type: "Particle Effects" },
+    { pattern: /(?:shader|material)/i, type: "Shader/Material" },
+    { pattern: /(?:light(?:ing)?|lamp)/i, type: "Lighting" },
+
+    // Audio
+    { pattern: /(?:audio|sound|music|sfx|bgm)/i, type: "Audio" },
+    { pattern: /(?:voice|vocal)/i, type: "Voice" },
+
+    // Animation
+    { pattern: /(?:animation|anim|motion|dance)/i, type: "Animation" },
+    { pattern: /(?:pose|gesture)/i, type: "Pose" },
+    { pattern: /(?:emote|emoji)/i, type: "Emote" },
+
+    // Textures & Materials
+    { pattern: /(?:texture|textures)\s*(?:pack|set)?/i, type: "Textures" },
+    { pattern: /(?:normal|bump|specular|roughness)\s*(?:map)?/i, type: "Material Map" },
+    { pattern: /(?:psd|photoshop|gimp)/i, type: "PSD/Source" },
+    { pattern: /(?:unity|unitypackage)/i, type: "Unity Package" },
+
+    // Documentation
+    { pattern: /(?:tutorial|guide|how\s*to)/i, type: "Tutorial" },
+    { pattern: /(?:readme|documentation|docs)/i, type: "Documentation" },
+    { pattern: /(?:license|terms)/i, type: "License" },
+  ],
+
+  // Descriptor patterns - additional info about the content
+  descriptors: [
+    // Quality/Version
+    { pattern: /(?:hd|hq|high[\s-]*(?:quality|res(?:olution)?))/i, desc: "HD" },
+    { pattern: /(?:4k|8k|2k)/i, desc: (m: string) => m.toUpperCase() },
+    { pattern: /(?:original|source)/i, desc: "Original" },
+    { pattern: /(?:updated?|new(?:est)?|latest)/i, desc: "Updated" },
+    { pattern: /(?:fix(?:ed)?|patch(?:ed)?)/i, desc: "Fixed" },
+    { pattern: /(?:reupload(?:ed)?|re[\s-]*upload)/i, desc: "Reupload" },
+    { pattern: /(?:alt(?:ernative)?|variant)/i, desc: "Alternative" },
+
+    // Compatibility
+    { pattern: /(?:quest|android)\s*(?:compatible|version)?/i, desc: "Quest Compatible" },
+    { pattern: /(?:pc[\s-]*only|pc\s*version)/i, desc: "PC Only" },
+    { pattern: /(?:cross[\s-]*platform)/i, desc: "Cross-Platform" },
+
+    // Version info
+    { pattern: /v(?:er(?:sion)?)?[\s.]*(\d+(?:\.\d+)*)/i, desc: (m: string, v: string) => `v${v}` },
+    { pattern: /(\d+(?:\.\d+)+)[\s-]*(?:release|update)/i, desc: (m: string, v: string) => `v${v}` },
+
+    // Parts/Variants
+    { pattern: /part\s*(\d+)/i, desc: (m: string, n: string) => `Part ${n}` },
+    { pattern: /(?:vol(?:ume)?|chapter)\s*(\d+)/i, desc: (m: string, n: string) => `Vol. ${n}` },
+    { pattern: /\[(\d+)\/(\d+)\]/i, desc: (m: string, a: string, b: string) => `[${a}/${b}]` },
+
+    // Size/Count
+    { pattern: /(\d+)\s*(?:items?|pieces?|assets?)/i, desc: (m: string, n: string) => `${n} items` },
+    { pattern: /(\d+(?:\.\d+)?)\s*(?:gb|mb|kb)/i, desc: (m: string) => m.toUpperCase() },
+
+    // Colors/Variants
+    { pattern: /(\d+)\s*(?:colors?|variants?|options?)/i, desc: (m: string, n: string) => `${n} variants` },
+    { pattern: /(?:all|every)\s*colors?/i, desc: "All Colors" },
+  ],
+
+  // Label patterns - text that often precedes a download link
+  labels: [
+    /(?:^|\n)\s*([^:\n]{3,50}):\s*$/m,                    // "Label:" on line before
+    /([^:\n]{3,50}):\s*(?=https?:\/\/)/,                   // "Label: url"
+    /(?:download|get|grab)\s+(?:the\s+)?([^:\n]{3,50})/i, // "download the X"
+    /here(?:'?s| is)\s+(?:the\s+)?([^:\n]{3,50})/i,       // "here's the X"
+    /([^:\n]{3,50})\s+(?:link|download|url)/i,            // "X link/download"
+    /\[([^\]]{3,50})\]/,                                   // "[Label]"
+    /【([^】]{3,50})】/,                                    // Japanese brackets
+    /「([^」]{3,50})」/,                                    // Japanese quotes
+  ],
+};
+
+/**
+ * Extract contextual information for a download link from surrounding text
+ */
+export function extractLinkContext(
+  content: string,
+  url: string
+): { context: string; contentType?: string } {
+  const result: { context: string; contentType?: string } = { context: "" };
+  const contextParts: string[] = [];
+
+  // Escape URL for regex (only escape actual regex special chars)
+  const escapedUrl = url.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+
+  // First, try to find label in the RAW HTML before cleaning
+  // Pattern: "Label: <a href="URL"" - very common in forum posts
+  // Note: Don't require closing quote immediately - there may be other attributes
+  const anchorPattern = new RegExp(
+    `([^<>:\\n\\r]{2,60}):\\s*<a[^>]*href=["']${escapedUrl}`,
+    "i"
+  );
+  const anchorMatch = content.match(anchorPattern);
+  if (anchorMatch && anchorMatch[1]) {
+    const label = anchorMatch[1].replace(/<[^>]*>/g, "").trim();
+    if (label.length >= 2 && /[a-zA-Z]/.test(label) && !label.includes("http")) {
+      contextParts.push(label);
+    }
+  }
+
+  // Also try: "Label: URL" where URL is plain text (not in anchor)
+  if (contextParts.length === 0) {
+    const plainUrlPattern = new RegExp(
+      `([^<>:\\n\\r]{2,60}):\\s*${escapedUrl}`,
+      "i"
+    );
+    const plainMatch = content.match(plainUrlPattern);
+    if (plainMatch && plainMatch[1]) {
+      const label = plainMatch[1].replace(/<[^>]*>/g, "").trim();
+      if (label.length >= 2 && /[a-zA-Z]/.test(label) && !label.includes("http")) {
+        contextParts.push(label);
+      }
+    }
+  }
+
+  // Clean HTML for further processing
+  const cleanContent = content
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"')
+    .replace(/&#x2F;/g, "/")
+    .replace(/&amp;/g, "&")
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Find the URL position in cleaned content
+  let urlIndex = cleanContent.indexOf(url);
+
+  // Try partial URL match if full URL not found
+  if (urlIndex === -1) {
+    // Try finding by domain
+    try {
+      const urlObj = new URL(url);
+      urlIndex = cleanContent.indexOf(urlObj.hostname);
+    } catch {
+      // If we already found a label from anchor pattern, return it
+      if (contextParts.length > 0) {
+        result.context = contextParts.join(" • ");
+        return result;
+      }
+      return result;
+    }
+  }
+
+  if (urlIndex === -1) {
+    // If we already found a label from anchor pattern, return it
+    if (contextParts.length > 0) {
+      result.context = contextParts.join(" • ");
+      return result;
+    }
+    return result;
+  }
+
+  // Get text before the URL (up to 200 chars)
+  const textBeforeUrl = cleanContent.slice(Math.max(0, urlIndex - 200), urlIndex).trim();
+
+  // Get surrounding text for content type detection
+  const start = Math.max(0, urlIndex - 300);
+  const end = Math.min(cleanContent.length, urlIndex + url.length + 100);
+  const surroundingText = cleanContent.slice(start, end);
+
+  // === Try to extract label if not already found from anchor ===
+  if (contextParts.length === 0) {
+    // Pattern: "Label: URL" or "Label : URL" (most common pattern)
+    const labelColonMatch = textBeforeUrl.match(/([^:\n\r]{2,60}):\s*$/);
+    if (labelColonMatch && labelColonMatch[1]) {
+      const label = labelColonMatch[1].trim();
+      // Validate: has letters, reasonable length, not just a URL or domain
+      if (
+        label.length >= 2 &&
+        label.length <= 60 &&
+        /[a-zA-Z]/.test(label) &&
+        !label.includes("http") &&
+        !label.includes("www.")
+      ) {
+        contextParts.push(label);
+      }
+    }
+  }
+
+  // Try other label patterns if no colon pattern matched
+  if (contextParts.length === 0) {
+    // Pattern: [Label] URL
+    const bracketMatch = textBeforeUrl.match(/\[([^\]]{2,50})\]\s*$/);
+    if (bracketMatch && bracketMatch[1]) {
+      const label = bracketMatch[1].trim();
+      if (label.length >= 2 && /[a-zA-Z]/.test(label)) {
+        contextParts.push(label);
+      }
+    }
+
+    // Pattern: 「Label」URL (Japanese)
+    const jpMatch = textBeforeUrl.match(/[「【]([^」】]{2,50})[」】]\s*$/);
+    if (jpMatch && jpMatch[1]) {
+      const label = jpMatch[1].trim();
+      if (label.length >= 2) {
+        contextParts.push(label);
+      }
+    }
+
+    // Pattern: Last line before URL (if it's short and looks like a label)
+    if (contextParts.length === 0) {
+      const lines = textBeforeUrl.split(/[\n\r]+/);
+      const lastLine = lines[lines.length - 1]?.trim();
+      if (
+        lastLine &&
+        lastLine.length >= 2 &&
+        lastLine.length <= 50 &&
+        /[a-zA-Z]/.test(lastLine) &&
+        !lastLine.includes("http") &&
+        !/^[\d\s.,;:!?]+$/.test(lastLine)
+      ) {
+        contextParts.push(lastLine);
+      }
+    }
+  }
+
+  // === Try to extract content type from surrounding text ===
+  for (const { pattern, type } of LINK_CONTEXT_PATTERNS.contentTypes) {
+    if (pattern.test(surroundingText)) {
+      result.contentType = type;
+      break;
+    }
+  }
+
+  // === Try to extract descriptors ===
+  for (const { pattern, desc } of LINK_CONTEXT_PATTERNS.descriptors) {
+    const match = surroundingText.match(pattern);
+    if (match) {
+      const descriptor = typeof desc === "function"
+        ? desc(match[0], match[1], match[2])
+        : desc;
+      if (descriptor && !contextParts.includes(descriptor)) {
+        contextParts.push(descriptor);
+      }
+    }
+  }
+
+  // Build final context string
+  if (contextParts.length > 0) {
+    result.context = contextParts.join(" • ");
+  } else if (result.contentType) {
+    result.context = result.contentType;
+  }
+
+  return result;
+}
+
+/**
+ * Format a download link with context for display
+ */
+export function formatDownloadLinkDisplay(link: DownloadLink): string {
+  const parts: string[] = [];
+
+  if (link.context) {
+    parts.push(link.context);
+  } else if (link.contentType) {
+    parts.push(link.contentType);
+  } else if (link.name && link.name !== link.domain) {
+    parts.push(link.name);
+  }
+
+  // Add domain as fallback or suffix
+  if (parts.length === 0) {
+    parts.push(link.domain);
+  }
+
+  return parts.join(" • ");
 }
 
 export interface TransformedSearchResult {
@@ -1191,22 +1518,21 @@ function extractDownloadsFromContent(htmlContent: string): DownloadLink[] {
       const domain = url.hostname.replace(/^www\./, "").toLowerCase();
 
       if (DOWNLOAD_DOMAINS.some((d) => domain.includes(d) || d.includes(domain))) {
-        // Extract name from anchor text or URL
-        let name = anchor.textContent?.trim() || "";
+        // Try to extract context from the HTML content
+        const contextInfo = extractLinkContext(htmlContent, href);
 
-        // If name is just a URL or empty, try to extract from URL path
-        if (!name || name === href || name.startsWith("http")) {
-          const pathParts = url.pathname.split("/").filter(Boolean);
-          const lastPart = pathParts[pathParts.length - 1] || "";
-          // Decode and clean up the name
-          try {
-            name = decodeURIComponent(lastPart).replace(/[-_]/g, " ");
-          } catch {
-            name = lastPart.replace(/[-_]/g, " ");
+        // Use context as name if found
+        let name = contextInfo.context || "";
+
+        // Fallback: try anchor text if it's not just the URL
+        if (!name) {
+          const anchorText = anchor.textContent?.trim() || "";
+          if (anchorText && anchorText !== href && !anchorText.startsWith("http")) {
+            name = anchorText;
           }
         }
 
-        // Clean up the name
+        // Final fallback: use domain
         if (!name || name.length < 2) {
           name = domain;
         }
@@ -1215,6 +1541,8 @@ function extractDownloadsFromContent(htmlContent: string): DownloadLink[] {
           url: href,
           name,
           domain,
+          context: contextInfo.context || undefined,
+          contentType: contextInfo.contentType || undefined,
         });
       }
     } catch {
@@ -2282,7 +2610,31 @@ export class SearchResultTransformer {
       }
     }
 
-    return Array.from(uniqueLinks.values());
+    // Enrich links with context from surrounding text
+    const enrichedLinks = Array.from(uniqueLinks.values()).map(link => {
+      const contextInfo = extractLinkContext(content, link.url);
+
+      // Determine the best display name
+      let displayName = link.name;
+
+      // If we found context, use it as the name
+      if (contextInfo.context) {
+        displayName = contextInfo.context;
+      }
+      // If name is a URL or matches domain, use domain as fallback
+      else if (link.name.startsWith("http") || link.name === link.domain) {
+        displayName = link.domain;
+      }
+
+      return {
+        ...link,
+        context: contextInfo.context || undefined,
+        contentType: contextInfo.contentType || undefined,
+        name: displayName,
+      };
+    });
+
+    return enrichedLinks;
   }
 
   /**
