@@ -1277,9 +1277,235 @@ export async function fetchAndParseSearchPage(url: string): Promise<SearchPage> 
   });
 }
 
+// ============ Search Cache System ============
+
+const CACHE_KEY = "boothkit_search_cache";
+const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour in milliseconds
+
+interface SearchCacheEntry {
+  type: "search";
+  data: SearchPage;
+  timestamp: number;
+}
+
+interface TopicCacheEntry {
+  type: "topic";
+  data: TopicData;
+  timestamp: number;
+}
+
+interface PostUrlCacheEntry {
+  type: "postUrl";
+  data: string;
+  timestamp: number;
+}
+
+type CacheEntry = SearchCacheEntry | TopicCacheEntry | PostUrlCacheEntry;
+
+interface SearchCache {
+  entries: Record<string, CacheEntry>;
+}
+
+let cacheInitialized = false;
+
+/**
+ * Initialize cache - clears expired entries on first run
+ */
+function initializeCache(): SearchCache {
+  if (cacheInitialized) {
+    return getCache();
+  }
+
+  const cache = getCache();
+  const now = Date.now();
+  let hasExpired = false;
+
+  // Clear expired entries
+  for (const key of Object.keys(cache.entries)) {
+    if (now - cache.entries[key].timestamp > CACHE_EXPIRY_MS) {
+      delete cache.entries[key];
+      hasExpired = true;
+    }
+  }
+
+  if (hasExpired) {
+    saveCache(cache);
+    console.log("[BoothKit] Cleared expired cache entries");
+  }
+
+  cacheInitialized = true;
+  return cache;
+}
+
+/**
+ * Get the cache from storage
+ */
+function getCache(): SearchCache {
+  try {
+    const stored = GM_getValue<string>(CACHE_KEY, "");
+    if (stored) {
+      return JSON.parse(stored) as SearchCache;
+    }
+  } catch (e) {
+    console.warn("[BoothKit] Failed to parse cache, resetting:", e);
+  }
+  return { entries: {} };
+}
+
+/**
+ * Save the cache to storage
+ */
+function saveCache(cache: SearchCache): void {
+  try {
+    GM_setValue(CACHE_KEY, JSON.stringify(cache));
+  } catch (e) {
+    console.warn("[BoothKit] Failed to save cache:", e);
+  }
+}
+
+/**
+ * Generate a cache key from search params
+ */
+function getCacheKey(params: SearchUrlParams): string {
+  // Create a deterministic key from the params
+  const keyParts = [
+    params.term || "",
+    params.in || "titlesposts",
+    params.matchWords || "all",
+    params.showAs || "posts",
+    params.sortBy || "relevance",
+    params.sortDirection || "desc",
+  ];
+  return "search:" + keyParts.join("|");
+}
+
+/**
+ * Get cached search result if valid
+ */
+function getCachedSearch(params: SearchUrlParams): SearchPage | null {
+  const cache = initializeCache();
+  const key = getCacheKey(params);
+  const entry = cache.entries[key];
+
+  if (!entry || entry.type !== "search") return null;
+
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_EXPIRY_MS) {
+    // Expired, remove from cache
+    delete cache.entries[key];
+    saveCache(cache);
+    return null;
+  }
+
+  console.log("[BoothKit] Cache hit for search:", params.term);
+  return entry.data;
+}
+
+/**
+ * Store search result in cache
+ */
+function setCachedSearch(params: SearchUrlParams, data: SearchPage): void {
+  const cache = initializeCache();
+  const key = getCacheKey(params);
+
+  cache.entries[key] = {
+    type: "search",
+    data,
+    timestamp: Date.now(),
+  };
+
+  saveCache(cache);
+}
+
+/**
+ * Get cached topic posts if valid
+ */
+function getCachedTopic(tid: number, slug: string, offset: number): TopicData | null {
+  const cache = initializeCache();
+  const key = `topic:${tid}:${slug}:${offset}`;
+  const entry = cache.entries[key];
+
+  if (!entry || entry.type !== "topic") return null;
+
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_EXPIRY_MS) {
+    delete cache.entries[key];
+    saveCache(cache);
+    return null;
+  }
+
+  console.log("[BoothKit] Cache hit for topic:", tid);
+  return entry.data;
+}
+
+/**
+ * Store topic posts in cache
+ */
+function setCachedTopic(tid: number, slug: string, offset: number, data: TopicData): void {
+  const cache = initializeCache();
+  const key = `topic:${tid}:${slug}:${offset}`;
+
+  cache.entries[key] = {
+    type: "topic",
+    data,
+    timestamp: Date.now(),
+  };
+
+  saveCache(cache);
+}
+
+/**
+ * Get cached post URL if valid
+ */
+function getCachedPostUrl(postId: number): string | null {
+  const cache = initializeCache();
+  const key = `postUrl:${postId}`;
+  const entry = cache.entries[key];
+
+  if (!entry || entry.type !== "postUrl") return null;
+
+  const now = Date.now();
+  if (now - entry.timestamp > CACHE_EXPIRY_MS) {
+    delete cache.entries[key];
+    saveCache(cache);
+    return null;
+  }
+
+  console.log("[BoothKit] Cache hit for post URL:", postId);
+  return entry.data;
+}
+
+/**
+ * Store post URL in cache
+ */
+function setCachedPostUrl(postId: number, url: string): void {
+  const cache = initializeCache();
+  const key = `postUrl:${postId}`;
+
+  cache.entries[key] = {
+    type: "postUrl",
+    data: url,
+    timestamp: Date.now(),
+  };
+
+  saveCache(cache);
+}
+
 export async function searchRipperstore(params: SearchUrlParams): Promise<SearchPage> {
+  // Check cache first
+  const cached = getCachedSearch(params);
+  if (cached) {
+    return cached;
+  }
+
+  // Fetch fresh data
   const url = buildRipperstoreSearchUrl(params);
-  return fetchAndParseSearchPage(url);
+  const result = await fetchAndParseSearchPage(url);
+
+  // Cache the result
+  setCachedSearch(params, result);
+
+  return result;
 }
 
 // ============ RipperStore API Types ============
@@ -1435,7 +1661,17 @@ async function fetchRipperstoreApi<T>(endpoint: string): Promise<T> {
  * GET /api/post/{pid} returns the topic URL
  */
 export async function getPostTopicUrl(postId: number): Promise<string> {
+  // Check cache first
+  const cached = getCachedPostUrl(postId);
+  if (cached) {
+    return cached;
+  }
+
   const url = await fetchRipperstoreApi<string>(`/post/${postId}`);
+
+  // Cache the result
+  setCachedPostUrl(postId, url);
+
   return url;
 }
 
@@ -1461,7 +1697,18 @@ export async function fetchTopicPosts(
   slug: string,
   offset: number = 0
 ): Promise<TopicData> {
-  return fetchRipperstoreApi<TopicData>(`/topic/${tid}/${slug}/${offset}`);
+  // Check cache first
+  const cached = getCachedTopic(tid, slug, offset);
+  if (cached) {
+    return cached;
+  }
+
+  const result = await fetchRipperstoreApi<TopicData>(`/topic/${tid}/${slug}/${offset}`);
+
+  // Cache the result
+  setCachedTopic(tid, slug, offset, result);
+
+  return result;
 }
 
 /**
