@@ -7,7 +7,7 @@
     "build:r34u": "node builder.js --name rule34utils --namespace rule34utils --match 'https://rule34.xxx/index.php*' --file projects/rule34utils/index.js --outfile dist/rule34utils.user.js",
     "build:gxm": "node builder.js --name gxmodsforall --namespace gxmodsforall --match '*://*/*' --file projects/gxmodsforall/index.js --outfile dist/gxmodsforall.user.js",
     "build:pixiv": "node builder.js --name pixivutils --namespace pixivutils --match 'https://www.pixiv.net/*' --file projects/pixivutils/index.js --outfile dist/pixivutils.user.js",
-    "build:boothkit": "node builder.js --name boothkit --namespace boothkit --include '*://*.booth.pm/*' --file projects/boothkit/index.ts --outfile dist/boothkit.user.js --svelte",
+    "build:boothkit": "node builder.js --name boothkit --namespace boothkit --match 'https://booth.pm/*, https://*.booth.pm/*' --file projects/boothkit/index.ts --outfile dist/boothkit.user.js --svelte",
     "http-server": "cd ./dist && pnpx http-server -c-1 -p8081"
   },
   "keywords": [],

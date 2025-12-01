@@ -2271,12 +2271,17 @@ export async function searchBoothItemComprehensive(
 
       const transformed = SearchResultTransformer.transformAndScore(searchPage);
 
-      // Add source strategy info to each result
-      const transformedWithSource = transformed.map(result => ({
-        ...result,
-        foundVia: strategy,
-        foundQuery: searchTerm,
-      }));
+      // Add source strategy info to each result and recalculate score with strategy bonus
+      const transformedWithSource = transformed.map(result => {
+        const resultWithSource = {
+          ...result,
+          foundVia: strategy,
+          foundQuery: searchTerm,
+        };
+        // Recalculate score now that foundVia is set
+        resultWithSource.score = SearchResultTransformer.calculateResultScore(resultWithSource);
+        return resultWithSource;
+      });
 
       searchResults.push({
         strategy,
@@ -2764,6 +2769,19 @@ export class SearchResultTransformer {
    */
   static calculateResultScore(result: TransformedSearchResult): number {
     let score = 0;
+
+    // Search strategy bonus - how the result was found affects relevance
+    if (result.foundVia) {
+      const strategyScores: Record<SearchStrategy, number> = {
+        itemId: 200,         // Exact ID match is most relevant
+        shopAndProduct: 150, // Shop + product name is very specific
+        productName: 100,    // Direct product name match
+        category: 75,        // Category-based search
+        tags: 50,            // Tag-based search
+        keywords: 25,        // Keyword extraction (least specific)
+      };
+      score += strategyScores[result.foundVia] || 0;
+    }
 
     // Boost for having downloads
     if (result.hasDownloads) {

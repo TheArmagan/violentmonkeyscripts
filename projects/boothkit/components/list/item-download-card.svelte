@@ -144,45 +144,83 @@
     )
   );
 
+  // Recalculate score for a result considering deep scan data
+  function recalculateScore(result: TransformedSearchResult): number {
+    const deepScan = deepScanResults.get(result.id);
+    const baseScore = result.score || 0;
+
+    if (!deepScan) return baseScore;
+
+    // Add bonus for deep scan downloads
+    let bonus = 0;
+    const deepDownloadCount = deepScan.downloadLinks.length;
+    const originalDownloadCount = result.downloadCount;
+    const newDownloads = deepDownloadCount - originalDownloadCount;
+
+    if (newDownloads > 0) {
+      // Bonus for finding new downloads via deep scan
+      bonus += newDownloads * 15;
+    }
+
+    // Bonus for posts scanned depth
+    bonus += deepScan.stats.maxDepthReached * 5;
+
+    return baseScore + bonus;
+  }
+
   // Filter to only results with downloads (excluding megathreads)
-  // Re-evaluate when deepScanResults changes
+  // Re-evaluate when deepScanResults changes and sort by recalculated score
   let resultsWithDownloads = $derived.by(() => {
     // Spread deepScanResults to trigger reactivity when map changes
     const deepScansArray = [...deepScanResults.entries()];
-    return transformedResults.filter((r) => {
-      const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
-      if (deepScan) {
-        return deepScan.downloadLinks.length > 0 && !r.isMegathread;
-      }
-      return r.hasDownloads && !r.isMegathread;
-    });
+    return transformedResults
+      .filter((r) => {
+        const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
+        if (deepScan) {
+          return deepScan.downloadLinks.length > 0 && !r.isMegathread;
+        }
+        return r.hasDownloads && !r.isMegathread;
+      })
+      .map((r) => ({ ...r, score: recalculateScore(r) }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
   });
 
-  // Megathreads (separate section)
-  let megathreads = $derived(transformedResults.filter((r) => r.isMegathread));
+  // Megathreads (separate section) - sorted by recalculated score
+  let megathreads = $derived(
+    transformedResults
+      .filter((r) => r.isMegathread)
+      .map((r) => ({ ...r, score: recalculateScore(r) }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0))
+  );
 
-  // Results with references only (no downloads even after deep scan)
+  // Results with references only (no downloads even after deep scan) - sorted by recalculated score
   let resultsWithReferences = $derived.by(() => {
     const deepScansArray = [...deepScanResults.entries()];
-    return transformedResults.filter((r) => {
-      const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
-      const hasDownloads = deepScan
-        ? deepScan.downloadLinks.length > 0
-        : r.hasDownloads;
-      return r.hasReferences && !hasDownloads && !r.isMegathread;
-    });
+    return transformedResults
+      .filter((r) => {
+        const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
+        const hasDownloads = deepScan
+          ? deepScan.downloadLinks.length > 0
+          : r.hasDownloads;
+        return r.hasReferences && !hasDownloads && !r.isMegathread;
+      })
+      .map((r) => ({ ...r, score: recalculateScore(r) }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
   });
 
-  // All other results (not in any other category)
+  // All other results (not in any other category) - sorted by recalculated score
   let otherResults = $derived.by(() => {
     const deepScansArray = [...deepScanResults.entries()];
-    return transformedResults.filter((r) => {
-      const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
-      const hasDownloads = deepScan
-        ? deepScan.downloadLinks.length > 0
-        : r.hasDownloads;
-      return !hasDownloads && !r.hasReferences && !r.isMegathread;
-    });
+    return transformedResults
+      .filter((r) => {
+        const deepScan = deepScansArray.find(([id]) => id === r.id)?.[1];
+        const hasDownloads = deepScan
+          ? deepScan.downloadLinks.length > 0
+          : r.hasDownloads;
+        return !hasDownloads && !r.hasReferences && !r.isMegathread;
+      })
+      .map((r) => ({ ...r, score: recalculateScore(r) }))
+      .sort((a, b) => (b.score || 0) - (a.score || 0));
   });
 
   // Active tab

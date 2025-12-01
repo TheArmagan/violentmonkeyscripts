@@ -18,10 +18,10 @@
   function toggleTheme() {
     if (isDarkTheme) {
       document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
+      GM_setValue("theme", "light");
     } else {
       document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
+      GM_setValue("theme", "dark");
     }
     isDarkTheme = !isDarkTheme;
   }
@@ -31,7 +31,7 @@
   }
 
   onMount(() => {
-    const savedTheme = localStorage.getItem("theme");
+    const savedTheme = GM_getValue("theme");
     if (savedTheme === "dark") {
       document.documentElement.classList.add("dark");
       isDarkTheme = true;

@@ -52,7 +52,7 @@
       brand: item.shop?.name || "",
       categoryId: String(item.trackingData?.productCategory || 0),
       event: item.event,
-      thumbnails: item.thumbnailUrls,
+      thumbnails: item.thumbnailUrls.slice(0, 8),
       badges,
       shop: {
         name: item.shop?.name || "",
