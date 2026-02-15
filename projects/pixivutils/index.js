@@ -4,6 +4,9 @@ import { checkIsElementVisible, parseHTML, sleep } from "./utils.js";
 import "./styles.scss";
 
 async function main() {
+  const supportedPaths = ["/bookmark_new_illust.php", "/bookmark_new_illust_r18.php", "/discovery"];
+  if (!supportedPaths.includes(window.location.pathname)) return;
+
   const container = parseHTML(`
     <div class="pu--masonry-grid">
       <div class="infinite-scroll-trigger"></div>
