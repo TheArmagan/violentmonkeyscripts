@@ -13,7 +13,7 @@ function parseThumb(elm, sidebarTags = []) {
   const isVideo = altSpaced.includes("video ");
   const isAnimation = altSpaced.includes("animated ");
   let videoURL = null;
-  let animationURL = null;
+  let fullImageURL = null;
   return {
     id: parseInt(elm.id.slice(1)),
     url,
@@ -36,20 +36,16 @@ function parseThumb(elm, sidebarTags = []) {
 
       return videoURL === "NotFound" ? null : videoURL;
     },
-    async fetchAnimationURL() {
-      if (!isAnimation || animationURL === "NotFound") return null;
-      if (animationURL) return animationURL;
+    async fetchFullImageURL() {
+      if (fullImageURL === "NotFound") return null;
 
       const contentHtml = await fetch(url).then((res) => res.text());
       const doc = parseHTMLDocument(contentHtml);
 
-      if (doc.querySelector("#fit-to-screen img[alt]")) {
-        animationURL = doc.querySelector("#fit-to-screen img[alt]").src;
-      } else {
-        animationURL = "NotFound";
-      }
+      const aElms = [...doc.querySelectorAll('a')];
+      fullImageURL = aElms.find((a) => a.textContent.trim() === "Original image")?.href || "NotFound";
 
-      return animationURL === "NotFound" ? null : animationURL;
+      return fullImageURL === "NotFound" ? null : fullImageURL;
     }
   };
 }

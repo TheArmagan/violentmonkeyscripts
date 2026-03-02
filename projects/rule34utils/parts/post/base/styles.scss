@@ -245,3 +245,11 @@
     height: 32px;
   }
 }
+
+div[style="text-align: center; font-size: smaller;"] {
+  display: none;
+
+  & ~ br {
+    display: none;
+  }
+}

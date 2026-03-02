@@ -17,7 +17,7 @@ export function parsePostViewPageContent(elm) {
 /**
  * @param {HTMLDivElement} elm 
  * @param {import("../../../utils.js").TagType[]} sidebarTags
- * @returns {Omit<import("../../../utils.js").Post, "fetchVideoURL" | "fetchAnimationURL" | "tags">}
+ * @returns {Omit<import("../../../utils.js").Post, "fetchVideoURL" | "fetchFullImageURL" | "tags">}
  */
 function parseViewContent(elm, sidebarTags) {
   return {

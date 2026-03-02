@@ -3,7 +3,7 @@
  */
 
 /**
- * @typedef {{id: number, url: string, thumbnail_img: string, is_video: boolean, is_animation: boolean, tags: TagType[], fetchVideoURL: () => Promise<string | null>, fetchAnimationURL: () => Promise<string | null>}} Post 
+ * @typedef {{id: number, url: string, thumbnail_img: string, is_video: boolean, is_animation: boolean, tags: TagType[], fetchVideoURL: () => Promise<string | null>, fetchFullImageURL: () => Promise<string | null>}} Post 
  */
 
 const domParser = new DOMParser();

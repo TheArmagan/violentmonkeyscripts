@@ -45,6 +45,24 @@
           contain: content;
           border-radius: 4px;
 
+          & > .hover-countdown {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.25);
+            color: whitesmoke;
+            font-size: 12px;
+            font-weight: bold;
+            width: 22px;
+            height: 22px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            pointer-events: none;
+            z-index: 10;
+          }
+
           & > .video-indicator {
             display: flex;
             position: absolute;
@@ -98,7 +116,56 @@
         }
       }
     }
+  }
+}
 
-    
+.r34u--fullscreen-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.92);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 99999;
+
+  .r34u--fullscreen-close {
+    position: absolute;
+    top: 16px;
+    right: 16px;
+    background-color: rgba(0, 0, 0, 0.6);
+    border: none;
+    color: whitesmoke;
+    font-size: 28px;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 1;
+    transition: background-color 0.15s;
+
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.25);
+    }
+  }
+
+  img,
+  video {
+    max-width: 100vw;
+    max-height: 100vh;
+    object-fit: contain;
+  }
+
+  .r34u--fullscreen-loading {
+    font-size: 48px;
+    color: whitesmoke;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
 }

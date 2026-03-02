@@ -82,6 +82,23 @@ export function buildTagSidebar(tags) {
               </div>
             </div>
           </div>
+          <div class="filter-section" data-key="[none]" data-allow-multiple-values="true">
+            <div class="header">Tags</div>
+            <div class="filters">
+              <div class="filter" data-value="ai_generated" data-type="+-_">
+                <i class="ri-checkbox-blank-line"></i>
+                <span>AI Generated</span>
+              </div>
+              <div class="filter" data-value="video" data-type="+-_">
+                <i class="ri-checkbox-blank-line"></i>
+                <span>Video</span>
+              </div>
+              <div class="filter" data-value="animated" data-type="+-_">
+                <i class="ri-checkbox-blank-line"></i>
+                <span>Animated</span>
+              </div>
+            </div>
+          </div>
         </div>
         <div class="search-results"></div>
       </div>
@@ -105,9 +122,10 @@ function patchSidebarSearchElement(searchContainer) {
 
   const filtersButton = searchContainer.querySelector(".filters-button");
 
-  /** @type {{key: "rating"|"sort", value: string, negate: boolean }[]} */
+  /** @type {{key: "rating"|"sort"|"[none]", value: string, negate: boolean }[]} */
   let filters = [];
-  searchInput.value = (currentPageURL.searchParams.get("tags") || localStorage.getItem("r34u--last-search-tags") || "").replace(/(-?)(\w+):(\w+)/g, "").trim();
+  const noneKeyFilterValues = [...searchContainer.querySelectorAll('.filter-section[data-key="[none]"] .filter')].map(el => el.dataset.value).filter(v => v !== "[none]");
+  searchInput.value = (currentPageURL.searchParams.get("tags") || localStorage.getItem("r34u--last-search-tags") || "").replace(/(-?)(\w+):(\w+)/g, "").split(" ").filter(t => !noneKeyFilterValues.includes(t.replace(/^-/, ""))).join(" ").trim();
   if (searchInput.value === "all") searchInput.value = "";
 
   /** @type {HTMLDivElement} */
@@ -124,6 +142,14 @@ function patchSidebarSearchElement(searchContainer) {
     const tags = currentPageURL.searchParams.get("tags") || "";
     [...tags.matchAll(/(-?)(\w+):(\w+)/g)].forEach(([, negate, key, value]) => {
       filters.push({ key, value, negate: !!negate });
+    });
+
+    tags.split(" ").forEach(tag => {
+      const negate = tag.startsWith("-");
+      const cleanTag = negate ? tag.slice(1) : tag;
+      if (noneKeyFilterValues.includes(cleanTag)) {
+        filters.push({ key: "[none]", value: cleanTag, negate });
+      }
     });
 
     /** @type {HTMLDivElement[]} */
@@ -202,7 +228,7 @@ function patchSidebarSearchElement(searchContainer) {
 
   function doSearch() {
     const url = new URL("https://rule34.xxx/index.php?page=post&s=list");
-    url.searchParams.set("tags", `${searchInput.value !== "all" ? searchInput.value : ""} ${filters.filter(i => i.value !== "[none]").map((f) => `${f.negate ? "-" : ""}${f.key}:${f.value}`).join(" ")}`.trim());
+    url.searchParams.set("tags", `${searchInput.value !== "all" ? searchInput.value : ""} ${filters.filter(i => i.value !== "[none]").map((f) => `${f.negate ? "-" : ""}${f.key === "[none]" ? "" : `${f.key}:`}${f.value}`).join(" ")}`.trim());
     url.searchParams.set("pid", 0);
     location.href = url.href;
   }
@@ -345,3 +371,5 @@ export function buildPaginationElement(pagination, callbacks = {}) {
 
   return elm;
 }
+
+document.cookie = "filter_ai=0;";

@@ -48,7 +48,7 @@ const handlePreviewHover = _.debounce(
         staticPreview.replaceWith(videoPreview);
       });
     } else if (post.is_animation) {
-      const animURL = await post.fetchAnimationURL();
+      const animURL = await post.fetchFullImageURL();
 
       if (!animURL) {
         videoIndicator.remove();
@@ -159,6 +159,57 @@ function patchPostListPostsElement(postsElm, content) {
     if (post.is_video || post.is_animation) {
       previewContainer.addEventListener("mouseenter", () => handlePreviewHover(post, previewContainer));
     }
+
+    // 3-second hover → fullscreen preview
+    let hoverCountdownInterval = null;
+    let hoverCountdownTimeout = null;
+    let hoverCountdownElm = null;
+
+    newElement.addEventListener("mouseenter", () => {
+      let remaining = 3;
+
+      hoverCountdownElm = parseHTML(`<div class="hover-countdown">${remaining}</div>`);
+      previewContainer.appendChild(hoverCountdownElm);
+
+      hoverCountdownInterval = setInterval(() => {
+        remaining--;
+        if (hoverCountdownElm) hoverCountdownElm.textContent = remaining;
+      }, 1000);
+
+      hoverCountdownTimeout = setTimeout(async () => {
+        clearInterval(hoverCountdownInterval);
+        if (hoverCountdownElm) { hoverCountdownElm.remove(); hoverCountdownElm = null; }
+
+        const overlay = parseHTML(`<div class="r34u--fullscreen-overlay"><button class="r34u--fullscreen-close"><i class="ri-close-line"></i></button><div class="r34u--fullscreen-loading"><i class="ri-loader-4-line loading-rotate"></i></div></div>`);
+        overlay.querySelector(".r34u--fullscreen-close").addEventListener("click", () => overlay.remove());
+        document.body.appendChild(overlay);
+
+        let mediaElm;
+        if (post.is_video) {
+          const videoURL = await post.fetchVideoURL();
+          if (videoURL) {
+            mediaElm = parseHTML(`<video src="${videoURL}" controls autoplay loop muted></video>`);
+          }
+        } else {
+          const fullURL = await post.fetchFullImageURL();
+          if (fullURL) {
+            mediaElm = parseHTML(`<img src="${fullURL}" />`);
+          }
+        }
+
+        if (!mediaElm) {
+          mediaElm = parseHTML(`<img src="${post.thumbnail_img}" />`);
+        }
+
+        overlay.querySelector(".r34u--fullscreen-loading").replaceWith(mediaElm);
+      }, 3000);
+    });
+
+    newElement.addEventListener("mouseleave", () => {
+      clearInterval(hoverCountdownInterval);
+      clearTimeout(hoverCountdownTimeout);
+      if (hoverCountdownElm) { hoverCountdownElm.remove(); hoverCountdownElm = null; }
+    });
 
     const tagsContainer = newElement.querySelector(".tags");
 
