@@ -51,6 +51,12 @@ class BeatImgApp {
     this._scenePriority = 0;  // bass=3, mid=2, high=1; düşük öncelikli beat üst üste gelmez
     this._preloadCache = new Set(); // önceden yüklenen URL'ler
     this._shuffleQueue = [];  // karıştırılmış resim kuyruğu
+    this._scrollQueue = [];   // scroll şeridi için ayrı kuyruk
+    this._scrollDir = -1;     // -1 = sağdan sola, 1 = soldan sağa
+    this._scrollTl = null;    // compat, artık kullanılmıyor
+    this._scrollDirTimer = null;
+    this.scrollRows = [];  // [{ strip, tl, dir, speed }]
+    this._lastBpm = 120;
     this._observer = null;
     this.sourceMode = 'mic'; // 'mic' | 'file'
     this.audioEl = null;
@@ -65,18 +71,28 @@ class BeatImgApp {
         this._animZoomCrush.bind(this),
         this._animFilmBurn.bind(this),
         this._animStampDrop.bind(this),
+        this._animGlitchSlam.bind(this),
+        this._animEarthquake.bind(this),
+        this._animRGBSplit.bind(this),
+        this._animVortex.bind(this),
       ],
       mid: [
         this._animSplitReveal.bind(this),
         this._animDiagonalSlice.bind(this),
         this._animSideSlide.bind(this),
         this._animGlitch.bind(this),
+        this._animDataCorrupt.bind(this),
+        this._animZipIn.bind(this),
+        this._animBarSweep.bind(this),
       ],
       high: [
         this._animScatterBurst.bind(this),
         this._animStrobe.bind(this),
         this._animChromatic.bind(this),
         this._animVHSNoise.bind(this),
+        this._animPixelBurst.bind(this),
+        this._animFlickerPop.bind(this),
+        this._animTileShatter.bind(this),
       ],
     };
 
@@ -90,6 +106,7 @@ class BeatImgApp {
     this._buildToggleBtn();
     this._buildPanel();
     this._buildOverlay();
+    this._buildScrollOverlay();
     this._refreshPool();
 
     this._observer = new MutationObserver(() => {
@@ -268,6 +285,26 @@ class BeatImgApp {
     document.body.appendChild(this.overlay);
   }
 
+  _buildScrollOverlay() {
+    this.scrollOverlay = el("div", `${PFX}scroll-overlay`);
+    // 3 satır: üst → sola, orta → sağa (daha yavaş), alt → sola (daha hızlı)
+    const rowDefs = [
+      { dir: -1, speed: 1.0 },
+      { dir: 1, speed: 0.72 },
+      { dir: -1, speed: 1.35 },
+    ];
+    this.scrollRows = rowDefs.map(({ dir, speed }) => {
+      const rowEl = el("div", `${PFX}scroll-row`);
+      const stripEl = el("div", `${PFX}scroll-strip`);
+      rowEl.appendChild(stripEl);
+      this.scrollOverlay.appendChild(rowEl);
+      return { strip: stripEl, tl: null, dir, speed, halfWidth: 0 };
+    });
+    // eski tek şerit compat referansı
+    this.scrollStrip = this.scrollRows[0].strip;
+    document.body.appendChild(this.scrollOverlay);
+  }
+
   /* ---------------------------------------------------------------- */
   /* Panel aç / kapat                                                 */
   /* ---------------------------------------------------------------- */
@@ -418,6 +455,7 @@ class BeatImgApp {
       this.isActive = true;
       this._setStatus("active", this.sourceMode === "file" ? "Analyzing file..." : "Listening...");
       this.stopBtn.disabled = false;
+      this._startScroll();
     } else {
       this._setStatus("error", this.sourceMode === "file" ? "Could not connect audio source" : "Microphone access failed");
       this.startBtn.disabled = false;
@@ -433,6 +471,7 @@ class BeatImgApp {
     this.stopBtn.disabled = true;
     this.energyFill.style.width = "0%";
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+    this._stopScroll();
   }
 
   _loadAudioFile(file) {
@@ -456,7 +495,7 @@ class BeatImgApp {
     this.beatCountEl.textContent = `${this.beatCount} beat`;
 
     this._refreshPool();
-    const countMap = { bass: 2, mid: 3, high: 4 };
+    const countMap = { bass: 4, mid: 5, high: 6 };
     const images = this._dequeueImages(countMap[type] || 1);
     if (images.length) {
       const pool = this._beatAnimations[type] || this._beatAnimations.bass;
@@ -482,10 +521,21 @@ class BeatImgApp {
   /* ---------------------------------------------------------------- */
   /* Energy olayı (her frame)                                         */
   /* ---------------------------------------------------------------- */
-  _onEnergy({ ratio, spectrum }) {
+  _onEnergy({ ratio, spectrum, bpm }) {
     // Enerji barı
     const pct = Math.min(100, Math.max(0, (ratio - 1) * 130));
     this.energyFill.style.width = pct + "%";
+
+    // BPM'i güncelle (baseline için)
+    if (bpm && bpm !== this._lastBpm) this._lastBpm = bpm;
+
+    // Scroll hızı: her frame'de canlı enerji ratio'sundan hesapla
+    // ratio ≈ 1.0 → sakin, >1.5 → beat üzeri enerji
+    // 0.4x (sessiz) → 1.0x (normal) → 3.5x (pik beat)
+    const bpmBase = this._scrollSpeedFromBpm(this._lastBpm); // BPM katkısı (0.33–1.83)
+    const energyScale = Math.min(3.5, Math.max(0.4, 0.5 + (ratio - 1) * 2.2));
+    const finalScale = bpmBase * energyScale;
+    this.scrollRows.forEach(row => { if (row.tl) row.tl.timeScale(finalScale); });
 
     // Frekans spektrumu görsel
     this._drawSpectrum(spectrum);
@@ -551,7 +601,7 @@ class BeatImgApp {
 
   /* Eleman sayısına göre üst üste gelmeyen rastgele layout atar */
   _applyLayout(els) {
-    const n = Math.min(els.length, 4);
+    const n = Math.min(els.length, 6);
     // l=left, t=top, w=width, h=height (vw/vh string)
     const L = {
       1: [
@@ -586,8 +636,80 @@ class BeatImgApp {
         // Büyük sağ + 3 sol üst üste
         [{ l: '36vw', t: '5vh', w: '62vw', h: '90vh' }, { l: '1vw', t: '2vh', w: '33vw', h: '28vh' }, { l: '1vw', t: '34vh', w: '33vw', h: '28vh' }, { l: '1vw', t: '66vh', w: '33vw', h: '28vh' }],
       ],
+      5: [
+        // Üst 3 + alt 2
+        [
+          { l: '1vw', t: '2vh', w: '31vw', h: '47vh' },
+          { l: '34vw', t: '2vh', w: '32vw', h: '47vh' },
+          { l: '68vw', t: '2vh', w: '31vw', h: '47vh' },
+          { l: '5vw', t: '52vh', w: '43vw', h: '46vh' },
+          { l: '52vw', t: '52vh', w: '43vw', h: '46vh' },
+        ],
+        // Sol 2 + sağ 3
+        [
+          { l: '1vw', t: '2vh', w: '48vw', h: '47vh' },
+          { l: '1vw', t: '51vh', w: '48vw', h: '47vh' },
+          { l: '51vw', t: '2vh', w: '48vw', h: '30vh' },
+          { l: '51vw', t: '34vh', w: '48vw', h: '30vh' },
+          { l: '51vw', t: '66vh', w: '48vw', h: '30vh' },
+        ],
+        // Sol 3 + sağ 2
+        [
+          { l: '1vw', t: '2vh', w: '48vw', h: '30vh' },
+          { l: '1vw', t: '34vh', w: '48vw', h: '30vh' },
+          { l: '1vw', t: '66vh', w: '48vw', h: '30vh' },
+          { l: '51vw', t: '2vh', w: '48vw', h: '47vh' },
+          { l: '51vw', t: '51vh', w: '48vw', h: '47vh' },
+        ],
+        // Büyük merkez + 4 köşe
+        [
+          { l: '20vw', t: '20vh', w: '60vw', h: '60vh' },
+          { l: '1vw', t: '1vh', w: '17vw', h: '46vh' },
+          { l: '82vw', t: '1vh', w: '17vw', h: '46vh' },
+          { l: '1vw', t: '53vh', w: '17vw', h: '45vh' },
+          { l: '82vw', t: '53vh', w: '17vw', h: '45vh' },
+        ],
+      ],
+      6: [
+        // 3×2 ızgara
+        [
+          { l: '1vw', t: '2vh', w: '32vw', h: '47vh' },
+          { l: '34vw', t: '2vh', w: '32vw', h: '47vh' },
+          { l: '67vw', t: '2vh', w: '32vw', h: '47vh' },
+          { l: '1vw', t: '51vh', w: '32vw', h: '47vh' },
+          { l: '34vw', t: '51vh', w: '32vw', h: '47vh' },
+          { l: '67vw', t: '51vh', w: '32vw', h: '47vh' },
+        ],
+        // 2×3 ızgara
+        [
+          { l: '1vw', t: '1vh', w: '49vw', h: '31vh' },
+          { l: '51vw', t: '1vh', w: '49vw', h: '31vh' },
+          { l: '1vw', t: '34vh', w: '49vw', h: '31vh' },
+          { l: '51vw', t: '34vh', w: '49vw', h: '31vh' },
+          { l: '1vw', t: '67vh', w: '49vw', h: '31vh' },
+          { l: '51vw', t: '67vh', w: '49vw', h: '31vh' },
+        ],
+        // 2 büyük üst + 4 küçük alt
+        [
+          { l: '1vw', t: '1vh', w: '49vw', h: '50vh' },
+          { l: '51vw', t: '1vh', w: '49vw', h: '50vh' },
+          { l: '1vw', t: '53vh', w: '23vw', h: '45vh' },
+          { l: '26vw', t: '53vh', w: '23vw', h: '45vh' },
+          { l: '51vw', t: '53vh', w: '23vw', h: '45vh' },
+          { l: '76vw', t: '53vh', w: '23vw', h: '45vh' },
+        ],
+        // Büyük sol + 5 sağ (2×3 sağ kolon)
+        [
+          { l: '1vw', t: '1vh', w: '57vw', h: '98vh' },
+          { l: '60vw', t: '1vh', w: '39vw', h: '31vh' },
+          { l: '60vw', t: '34vh', w: '39vw', h: '31vh' },
+          { l: '60vw', t: '67vh', w: '18vw', h: '31vh' },
+          { l: '80vw', t: '34vh', w: '19vw', h: '31vh' },
+          { l: '80vw', t: '67vh', w: '19vw', h: '31vh' },
+        ],
+      ],
     };
-    const opts = L[n];
+    const opts = L[n] || L[Math.min(n, 4)];
     const chosen = opts[Math.floor(Math.random() * opts.length)];
     els.forEach((e, i) => {
       const pos = chosen[i] || chosen[chosen.length - 1];
@@ -649,14 +771,98 @@ class BeatImgApp {
   }
 
   /* ================================================================ */
+  /* Scroll Overlay — BPM'e göre yatay kayan resim şeridi             */
+  /* ================================================================ */
+
+  _scrollSpeedFromBpm(bpm) {
+    // 60 BPM → 0.5x, 120 → 1x, 200 → 1.7x
+    const safe = Math.max(40, Math.min(220, bpm || 120));
+    return safe / 120;
+  }
+
+  _scrollDequeue(count) {
+    if (!this.imagePool.length) return [];
+    const result = [];
+    while (result.length < count) {
+      if (!this._scrollQueue.length) {
+        this._scrollQueue = [...this.imagePool].sort(() => Math.random() - 0.5);
+      }
+      result.push(this._scrollQueue.shift());
+    }
+    return result;
+  }
+
+  // Her satırı seamless döngü için çift içerikle doldurur; halfWidth (px) döner
+  _populateRow(row) {
+    const strip = row.strip;
+    strip.innerHTML = '';
+    if (!this.imagePool.length) return 0;
+    const imgW = Math.round(window.innerWidth * 0.18); // ~18vw px
+    const gap = 8;
+    const perScreen = Math.ceil(window.innerWidth / (imgW + gap));
+    const need = perScreen + 3; // ekranı + biraz fazlasını kapat
+    const srcs = this._scrollDequeue(need);
+    const makeImg = src => {
+      const e = document.createElement('div');
+      e.className = `${PFX}scroll-img`;
+      e.style.backgroundImage = `url("${src.replace(/"/g, '%22')}")`;
+      return e;
+    };
+    // İki kopya → seamless loop
+    srcs.forEach(src => strip.appendChild(makeImg(src)));
+    srcs.forEach(src => strip.appendChild(makeImg(src)));
+    row.halfWidth = need * (imgW + gap);
+    return row.halfWidth;
+  }
+
+  // eski compat wrapper
+  _populateScrollStrip() { if (this.scrollRows.length) this._populateRow(this.scrollRows[0]); }
+
+  _startScroll() {
+    if (!this.imagePool.length) this._refreshPool();
+    this.scrollOverlay.classList.add('visible');
+    this.scrollRows.forEach(row => this._runRowLoop(row));
+  }
+
+  _runRowLoop(row) {
+    if (row.tl) { row.tl.kill(); row.tl = null; }
+    const halfWidth = this._populateRow(row);
+    if (halfWidth <= 0) return;
+    // dir=-1: 0 → -halfWidth (sola), dir=1: -halfWidth → 0 (sağa)
+    const startX = row.dir < 0 ? 0 : -halfWidth;
+    const endX = row.dir < 0 ? -halfWidth : 0;
+    gsap.set(row.strip, { x: startX });
+    const baseDuration = halfWidth / 90; // 90px/s taban
+    row.tl = gsap.to(row.strip, {
+      x: endX,
+      duration: baseDuration / row.speed,
+      ease: 'none',
+      repeat: -1,
+    });
+    row.tl.timeScale(this._scrollSpeedFromBpm(this._lastBpm));
+  }
+
+  _runScrollLoop() { this.scrollRows.forEach(row => this._runRowLoop(row)); }
+
+  _stopScroll() {
+    this.scrollRows.forEach(row => {
+      if (row.tl) { row.tl.kill(); row.tl = null; }
+      if (row.strip) row.strip.innerHTML = '';
+    });
+    clearInterval(this._scrollDirTimer);
+    this._scrollDirTimer = null;
+    if (this.scrollOverlay) this.scrollOverlay.classList.remove('visible');
+  }
+
+  /* ================================================================ */
   /* BASS animasyonları — sert konum/transform                        */
   /* ================================================================ */
 
   _animBassSlam(els) {
     els.forEach((e, i) => {
-      gsap.from(e, { scale: 0.06, rotate: i % 2 === 0 ? -5 : 5, duration: 0.28, ease: 'back.out(3)', delay: i * 0.04 });
+      gsap.from(e, { scale: 0.55, rotate: i % 2 === 0 ? -6 : 6, duration: 0.2, ease: 'back.out(3)', delay: i * 0.03 });
     });
-    gsap.fromTo(this.overlay, { x: -10 }, { x: 10, duration: 0.03, repeat: 7, yoyo: true, ease: 'none', onComplete: () => gsap.set(this.overlay, { x: 0 }) });
+    gsap.fromTo(this.overlay, { x: -10 }, { x: 10, duration: 0.025, repeat: 8, yoyo: true, ease: 'none', onComplete: () => gsap.set(this.overlay, { x: 0 }) });
   }
 
   _animZoomCrush(els) {
@@ -667,7 +873,9 @@ class BeatImgApp {
 
   _animFilmBurn(els) {
     els.forEach((e, i) => {
-      gsap.from(e, { scale: 0.3, rotate: i % 2 === 0 ? 160 : -160, duration: 0.32, ease: 'power3.out', delay: i * 0.05 });
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { scale: 0.72, rotate: i % 2 === 0 ? 10 : -10, filter: 'brightness(3) saturate(0)', duration: 0.18, ease: 'power3.out' })
+        .to(e, { filter: 'none', duration: 0.08 });
     });
   }
 
@@ -690,7 +898,16 @@ class BeatImgApp {
 
   _animDiagonalSlice(els) {
     els.forEach((e, i) => {
-      gsap.from(e, { clipPath: 'polygon(0 0, 0 0, 0 100%, 0 100%)', duration: 0.26, ease: 'power4.out', delay: i * 0.04 });
+      const xDir = i % 2 === 0 ? 1 : -1;
+      const yDir = Math.floor(i / 2) % 2 === 0 ? 1 : -1;
+      gsap.from(e, {
+        x: xDir * window.innerWidth * 0.3,
+        y: yDir * window.innerHeight * 0.2,
+        skewX: xDir * 15,
+        duration: 0.14,
+        ease: 'expo.out',
+        delay: i * 0.04,
+      });
     });
   }
 
@@ -717,7 +934,7 @@ class BeatImgApp {
 
   _animScatterBurst(els) {
     els.forEach((e, i) => {
-      gsap.from(e, { scale: 0.06, rotate: (Math.random() - 0.5) * 60, duration: 0.24, ease: 'back.out(2.5)', delay: i * 0.04 });
+      gsap.from(e, { scale: 0.5, rotate: (Math.random() - 0.5) * 30, duration: 0.18, ease: 'back.out(2.5)', delay: i * 0.04 });
     });
   }
 
@@ -732,10 +949,11 @@ class BeatImgApp {
   }
 
   _animChromatic(els) {
-    // Y ekseninden stagger slide
     els.forEach((e, i) => {
       const fromY = i % 2 === 0 ? window.innerHeight * 0.35 : -window.innerHeight * 0.35;
-      gsap.from(e, { y: fromY, scale: 0.88, duration: 0.3, ease: 'expo.out', delay: i * 0.04 });
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { y: fromY, filter: 'hue-rotate(180deg) saturate(3)', scale: 0.9, duration: 0.2, ease: 'expo.out' })
+        .to(e, { filter: 'none', duration: 0.08 });
     });
   }
 
@@ -746,6 +964,141 @@ class BeatImgApp {
         .to(e, { x: -7, skewX: -4, duration: 0.04 })
         .to(e, { x: 5, skewX: 3, duration: 0.04 })
         .to(e, { x: 0, skewX: 0, duration: 0.04 });
+    });
+  }
+
+  /* ================================================================ */
+  /* YENİ animasyonlar — glitch / corrupt / burst                    */
+  /* ================================================================ */
+
+  _animGlitchSlam(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      gsap.timeline({ delay: i * 0.03 })
+        .to(e, { x: -14, duration: 0.035, ease: 'steps(1)' })
+        .to(e, { x: 10, y: -5, duration: 0.025, ease: 'steps(1)' })
+        .to(e, { x: -6, y: 4, filter: 'hue-rotate(90deg)', duration: 0.025, ease: 'steps(1)' })
+        .to(e, { x: 0, y: 0, filter: 'none', duration: 0.035 });
+    });
+    gsap.fromTo(this.overlay,
+      { x: -9 },
+      { x: 9, duration: 0.025, repeat: 6, yoyo: true, ease: 'none', onComplete: () => gsap.set(this.overlay, { x: 0 }) }
+    );
+  }
+
+  _animEarthquake(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      const amp = Math.max(6, 16 - i * 2);
+      gsap.to(e, {
+        x: `random(-${amp}, ${amp})`,
+        y: `random(-${Math.ceil(amp / 2)}, ${Math.ceil(amp / 2)})`,
+        rotate: `random(-2.5, 2.5)`,
+        duration: 0.04,
+        repeat: 8,
+        ease: 'none',
+        repeatRefresh: true,
+        onComplete: () => gsap.to(e, { x: 0, y: 0, rotate: 0, duration: 0.08 }),
+      });
+    });
+  }
+
+  _animRGBSplit(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { filter: 'hue-rotate(180deg) saturate(4) contrast(2)', duration: 0.07, ease: 'steps(3)' })
+        .to(e, { x: -10, filter: 'hue-rotate(90deg) saturate(2)', duration: 0.04 })
+        .to(e, { x: 8, filter: 'hue-rotate(-90deg) saturate(2)', duration: 0.04 })
+        .to(e, { x: 0, filter: 'none', duration: 0.05 });
+    });
+  }
+
+  _animVortex(els) {
+    els.forEach((e, i) => {
+      const dir = i % 2 === 0 ? 1 : -1;
+      gsap.from(e, {
+        rotation: dir * 160,
+        scale: 0.18,
+        duration: 0.22,
+        ease: 'back.out(1.8)',
+        delay: i * 0.05,
+      });
+    });
+  }
+
+  _animDataCorrupt(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { skewX: 18, scaleX: 1.12, filter: 'hue-rotate(120deg) contrast(3)', duration: 0.06, ease: 'steps(3)' })
+        .to(e, { x: -12, skewX: -8, duration: 0.04 })
+        .to(e, { x: 8, skewX: 5, duration: 0.04 })
+        .to(e, { x: 0, skewX: 0, filter: 'none', duration: 0.06 });
+    });
+  }
+
+  _animZipIn(els) {
+    const dirs = [
+      { x: -window.innerWidth }, { x: window.innerWidth },
+      { y: -window.innerHeight }, { y: window.innerHeight },
+    ];
+    els.forEach((e, i) => {
+      const from = dirs[i % dirs.length];
+      gsap.from(e, { ...from, duration: 0.15, ease: 'expo.out', delay: i * 0.03 });
+    });
+  }
+
+  _animBarSweep(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      const yDir = i % 2 === 0 ? -22 : 22;
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { y: yDir, duration: 0.04, ease: 'steps(2)' })
+        .to(e, { x: -8, y: -yDir * 0.3, duration: 0.04 })
+        .to(e, { x: 5, y: 0, duration: 0.04 })
+        .to(e, { x: 0, duration: 0.04 });
+    });
+  }
+
+  _animPixelBurst(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, { scale: 1.12, filter: 'blur(10px) contrast(2) saturate(0)', duration: 0.14, ease: 'power3.out' })
+        .to(e, { filter: 'none', duration: 0.07 });
+    });
+  }
+
+  _animFlickerPop(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 0 });
+      gsap.timeline({ delay: i * 0.04 })
+        .to(e, { opacity: 1, duration: 0.02 })
+        .to(e, { opacity: 0.08, duration: 0.02 })
+        .to(e, { opacity: 1, duration: 0.02 })
+        .to(e, { opacity: 0.1, duration: 0.02 })
+        .to(e, { opacity: 1, duration: 0.02 })
+        .to(e, { opacity: 0.12, duration: 0.02 })
+        .to(e, { opacity: 1, duration: 0.02 });
+    });
+  }
+
+  _animTileShatter(els) {
+    els.forEach((e, i) => {
+      gsap.set(e, { opacity: 1 });
+      const sDir = i % 2 === 0 ? 1 : -1;
+      gsap.timeline({ delay: i * 0.04 })
+        .from(e, {
+          scaleX: 1.3,
+          scaleY: 0.7,
+          skewX: sDir * 14,
+          skewY: sDir * 6,
+          filter: 'brightness(2.5) contrast(2)',
+          duration: 0.1,
+          ease: 'expo.out',
+        })
+        .to(e, { filter: 'none', duration: 0.07 });
     });
   }
 }

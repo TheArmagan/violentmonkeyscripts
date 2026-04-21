@@ -416,6 +416,56 @@ $font:
   background-position: center center !important;
   background-repeat: no-repeat !important;
   box-sizing: border-box !important;
+  z-index: 3 !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Scroll Overlay — sürekli yatay kayan resim şeridi                  */
+/* ------------------------------------------------------------------ */
+.beatimg-scroll-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483643 !important;
+  pointer-events: none !important;
+  overflow: hidden !important;
+  background: rgba(0, 0, 0, 0.42) !important;
+  display: none;
+  flex-direction: column !important;
+
+  &.visible {
+    display: flex !important;
+  }
+}
+
+.beatimg-scroll-row {
+  flex: 1 !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.beatimg-scroll-strip {
+  position: absolute !important;
+  top: 4px !important;
+  bottom: 4px !important;
+  left: 0 !important;
+  display: flex !important;
+  align-items: stretch !important;
+  gap: 8px !important;
+  will-change: transform !important;
+  padding: 0 4px !important;
+}
+
+.beatimg-scroll-img {
+  flex: 0 0 auto !important;
+  width: 18vw !important;
+  height: 100% !important;
+  background-size: cover !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  border-radius: 4px !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.55) !important;
+  opacity: 0.65 !important;
+  filter: saturate(1.2) contrast(1.05) !important;
 }
 /* ------------------------------------------------------------------ */
 /* Kaynak Sekmeleri                                                    */

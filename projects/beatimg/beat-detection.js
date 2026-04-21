@@ -26,6 +26,14 @@ export class BeatDetector {
     this.lastMidTime = 0;
     this.lastHighTime = 0;
 
+    // Tempo / BPM takibi (bass aralıklarından)
+    this._bassIntervals = [];
+    this.bpm = 0;
+
+    // Sustained mode (elektronik müzikte ratio düşük ama enerji yüksek)
+    this._sustainedAbsThreshold = 55; // mutlak enerji eşiği
+    this._sustainedGap = 650;          // ms — hiç beat olmayan süre
+
     // Ayrı history buffer'lar — bass / mid / high
     const hs = this.options.historySize;
     this._bassHist = new Float32Array(hs); this._bassIdx = 0; this._bassFull = false;
@@ -96,6 +104,18 @@ export class BeatDetector {
     this._midHist.fill(0); this._midIdx = 0; this._midFull = false;
     this._highHist.fill(0); this._highIdx = 0; this._highFull = false;
     this.lastBassTime = 0; this.lastMidTime = 0; this.lastHighTime = 0;
+    this._bassIntervals.length = 0;
+    this.bpm = 0;
+  }
+
+  _registerBassInterval(now) {
+    if (this.lastBassTime <= 0) return;
+    const interval = now - this.lastBassTime;
+    if (interval < 180 || interval > 1500) return; // 40–333 BPM aralığı dışını reddet
+    this._bassIntervals.push(interval);
+    if (this._bassIntervals.length > 8) this._bassIntervals.shift();
+    const avg = this._bassIntervals.reduce((a, b) => a + b, 0) / this._bassIntervals.length;
+    this.bpm = Math.round(60000 / avg);
   }
 
   /** Hz değerini FFT bin indeksine dönüştürür. */
@@ -154,7 +174,7 @@ export class BeatDetector {
     const highRatio = high / (highAvg || 1);
 
     if (this.onEnergy) {
-      this.onEnergy({ bass, avg: bassAvg, ratio: bassRatio, spectrum: this._dataArray, mid, high, midRatio, highRatio });
+      this.onEnergy({ bass, avg: bassAvg, ratio: bassRatio, spectrum: this._dataArray, mid, high, midRatio, highRatio, bpm: this.bpm });
     }
 
     const now = performance.now();
@@ -163,18 +183,35 @@ export class BeatDetector {
 
     // Bass beat — kick drum (60-200 Hz)
     if (bassRatio >= sen && bass > 8 && now - this.lastBassTime >= cd) {
+      this._registerBassInterval(now);
       this.lastBassTime = now;
-      if (this.onBeat) this.onBeat({ energy: bass, ratio: bassRatio, instant: now, type: 'bass' });
+      if (this.onBeat) this.onBeat({ energy: bass, ratio: bassRatio, instant: now, type: 'bass', bpm: this.bpm });
     }
     // Mid beat — snare / chord stab (200-1500 Hz)
     if (midRatio >= sen * 1.15 && mid > 6 && now - this.lastMidTime >= cd * 0.6) {
       this.lastMidTime = now;
-      if (this.onBeat) this.onBeat({ energy: mid, ratio: midRatio, instant: now, type: 'mid' });
+      if (this.onBeat) this.onBeat({ energy: mid, ratio: midRatio, instant: now, type: 'mid', bpm: this.bpm });
     }
     // High beat — hi-hat / treble hit (1500-8000 Hz)
     if (highRatio >= sen * 1.28 && high > 4 && now - this.lastHighTime >= cd * 0.38) {
       this.lastHighTime = now;
-      if (this.onBeat) this.onBeat({ energy: high, ratio: highRatio, instant: now, type: 'high' });
+      if (this.onBeat) this.onBeat({ energy: high, ratio: highRatio, instant: now, type: 'high', bpm: this.bpm });
+    }
+
+    // Sustained fallback — elektronik müzikte ratio düşük ama enerji yoğun ise beat firılat
+    const lastAnyBeat = Math.max(this.lastBassTime, this.lastMidTime, this.lastHighTime);
+    if (now - lastAnyBeat > this._sustainedGap) {
+      // Hangi bant şu an dominant? Onu fire et.
+      let type = null, energy = 0, ratio = 1;
+      if (bass > this._sustainedAbsThreshold && bass >= mid && bass >= high) { type = 'bass'; energy = bass; ratio = bassRatio; }
+      else if (mid > this._sustainedAbsThreshold * 0.8 && mid >= high) { type = 'mid'; energy = mid; ratio = midRatio; }
+      else if (high > this._sustainedAbsThreshold * 0.6) { type = 'high'; energy = high; ratio = highRatio; }
+      if (type) {
+        if (type === 'bass') { this._registerBassInterval(now); this.lastBassTime = now; }
+        else if (type === 'mid') this.lastMidTime = now;
+        else this.lastHighTime = now;
+        if (this.onBeat) this.onBeat({ energy, ratio, instant: now, type, bpm: this.bpm, sustained: true });
+      }
     }
 
     this._rafId = requestAnimationFrame(() => this._loop());
