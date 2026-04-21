@@ -50,6 +50,7 @@ class BeatImgApp {
     this._sceneGen = 0;  // artarak yeni sahneyi tanımlar
     this._scenePriority = 0;  // bass=3, mid=2, high=1; düşük öncelikli beat üst üste gelmez
     this._preloadCache = new Set(); // önceden yüklenen URL'ler
+    this._shuffleQueue = [];  // karıştırılmış resim kuyruğu
     this._observer = null;
     this.sourceMode = 'mic'; // 'mic' | 'file'
     this.audioEl = null;
@@ -335,6 +336,9 @@ class BeatImgApp {
     });
 
     this.imagePool = [...pool];
+    // Artık pool'da olmayan URL'leri kuyruktan temizle
+    const poolSet = new Set(this.imagePool);
+    this._shuffleQueue = this._shuffleQueue.filter(src => poolSet.has(src));
     this._preloadImages();
   }
 
@@ -357,6 +361,20 @@ class BeatImgApp {
     if (!this.imagePool.length) return [];
     const pool = [...this.imagePool].sort(() => Math.random() - 0.5);
     return pool.slice(0, Math.min(count, pool.length));
+  }
+
+  // Her resim bir kez gösterildikten sonra tekrar karıştırılır
+  _dequeueImages(count) {
+    if (!this.imagePool.length) return [];
+    const maxCount = Math.min(count, this.imagePool.length);
+    const result = [];
+    while (result.length < maxCount) {
+      if (!this._shuffleQueue.length) {
+        this._shuffleQueue = [...this.imagePool].sort(() => Math.random() - 0.5);
+      }
+      result.push(this._shuffleQueue.shift());
+    }
+    return result;
   }
 
   /* ---------------------------------------------------------------- */
@@ -439,7 +457,7 @@ class BeatImgApp {
 
     this._refreshPool();
     const countMap = { bass: 2, mid: 3, high: 4 };
-    const images = this._pickImages(countMap[type] || 1);
+    const images = this._dequeueImages(countMap[type] || 1);
     if (images.length) {
       const pool = this._beatAnimations[type] || this._beatAnimations.bass;
       const animFn = pool[Math.floor(Math.random() * pool.length)];
@@ -524,6 +542,7 @@ class BeatImgApp {
     els.forEach(e => this.overlay.appendChild(e));
     this.overlay.classList.add('visible');
     animFn(els, energy, beatType);
+    this._addShake(els, beatType);
     const cd = this.detector?.options.cooldown ?? 400;
     // Bass/mid: en az 800ms, high: en az 500ms — cooldown ne olursa olsun
     const hold = beatType === 'high' ? Math.max(500, cd * 1.2) : Math.max(800, cd * 1.8);
@@ -581,13 +600,14 @@ class BeatImgApp {
     const imgs = [...this.overlay.querySelectorAll(`.${PFX}scene-img`)];
     if (!imgs.length) { this.overlay.classList.remove('visible'); this._scenePriority = 0; return; }
     if (instant) {
-      imgs.forEach(e => e.remove());
+      imgs.forEach(e => { gsap.killTweensOf(e); e.remove(); });
       this.overlay.classList.remove('visible');
       this._scenePriority = 0;
       return;
     }
     let done = 0;
     imgs.forEach(e => {
+      gsap.killTweensOf(e);
       gsap.to(e, {
         opacity: 0, duration: 0.16, ease: 'power2.in',
         onComplete: () => {
@@ -608,6 +628,24 @@ class BeatImgApp {
     this.overlayFlash.style.opacity = intensity;
     gsap.killTweensOf(this.overlayFlash);
     gsap.to(this.overlayFlash, { opacity: 0, duration: 0.32, ease: 'power3.out' });
+  }
+
+  // Resimler görüntülenirken titreşim ekler; high > mid > bass şiddeti
+  _addShake(els, beatType) {
+    const amp = beatType === 'high' ? 7 : beatType === 'mid' ? 3 : 0;
+    if (!amp) return;
+    const rot = beatType === 'high' ? 1.5 : 0.6;
+    els.forEach(e => {
+      gsap.to(e, {
+        x: `random(-${amp}, ${amp})`,
+        y: `random(-${Math.ceil(amp / 2)}, ${Math.ceil(amp / 2)})`,
+        rotate: `random(-${rot}, ${rot})`,
+        duration: 0.055,
+        repeat: -1,
+        ease: 'none',
+        repeatRefresh: true,
+      });
+    });
   }
 
   /* ================================================================ */
