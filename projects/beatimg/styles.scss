@@ -1,0 +1,528 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap");
+
+/* ------------------------------------------------------------------ */
+/* Değişkenler                                                         */
+/* ------------------------------------------------------------------ */
+$bg-panel: rgba(10, 10, 18, 0.94);
+$border: rgba(255, 255, 255, 0.07);
+$text: #e4e4f0;
+$muted: #7878a0;
+$accent: #6c63ff;
+$hot: #ff3b6b;
+$green: #2bff9a;
+$red: #ff3b3b;
+$font:
+  "Poppins",
+  system-ui,
+  -apple-system,
+  sans-serif;
+
+/* ------------------------------------------------------------------ */
+/* Toggle Butonu                                                       */
+/* ------------------------------------------------------------------ */
+.beatimg-toggle {
+  position: fixed !important;
+  top: 16px !important;
+  right: 16px !important;
+  z-index: 2147483645 !important;
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 50% !important;
+  background: rgba(12, 12, 22, 0.92) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1.5px solid rgba(108, 99, 255, 0.25) !important;
+  color: #c0c0e0 !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+  transition:
+    border-color 0.2s,
+    background 0.2s,
+    color 0.2s !important;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.5) !important;
+
+  &:hover {
+    border-color: rgba(108, 99, 255, 0.7) !important;
+    color: #ffffff !important;
+    background: rgba(20, 18, 40, 0.96) !important;
+  }
+
+  &.active {
+    border-color: $accent !important;
+    background: rgba(108, 99, 255, 0.18) !important;
+    color: #ffffff !important;
+  }
+
+  svg {
+    display: block !important;
+    flex-shrink: 0 !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Panel                                                              */
+/* ------------------------------------------------------------------ */
+.beatimg-panel {
+  position: fixed !important;
+  top: 68px !important;
+  right: 16px !important;
+  z-index: 2147483644 !important;
+  width: 276px !important;
+  background: $bg-panel !important;
+  backdrop-filter: blur(28px) !important;
+  -webkit-backdrop-filter: blur(28px) !important;
+  border: 1px solid $border !important;
+  border-radius: 18px !important;
+  font-family: $font !important;
+  font-size: 13px !important;
+  color: $text !important;
+  display: none !important;
+  flex-direction: column !important;
+  overflow: hidden !important;
+  box-shadow:
+    0 32px 64px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.03),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
+  max-height: calc(100vh - 90px) !important;
+  overflow-y: auto !important;
+
+  &.open {
+    display: flex !important;
+  }
+
+  * {
+    box-sizing: border-box !important;
+    font-family: $font !important;
+  }
+}
+
+/* Header */
+.beatimg-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  padding: 14px 16px 12px !important;
+  border-bottom: 1px solid $border !important;
+}
+
+.beatimg-title {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  font-size: 14px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.02em !important;
+  color: $text !important;
+}
+
+.beatimg-title-icon {
+  font-size: 15px !important;
+  line-height: 1 !important;
+}
+
+.beatimg-close-btn {
+  background: none !important;
+  border: none !important;
+  color: $muted !important;
+  cursor: pointer !important;
+  font-size: 14px !important;
+  padding: 4px 7px !important;
+  border-radius: 6px !important;
+  line-height: 1 !important;
+  transition:
+    color 0.15s,
+    background 0.15s !important;
+
+  &:hover {
+    color: $text !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+  }
+}
+
+/* Status Bar */
+.beatimg-status-bar {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  padding: 10px 16px !important;
+}
+
+.beatimg-dot {
+  width: 8px !important;
+  height: 8px !important;
+  border-radius: 50% !important;
+  flex-shrink: 0 !important;
+  transition: background 0.3s !important;
+
+  &.idle {
+    background: $muted !important;
+  }
+  &.connecting {
+    background: #ffb800 !important;
+    animation: beatimg-blink 0.7s infinite !important;
+  }
+  &.active {
+    background: $green !important;
+    animation: beatimg-blink 1.4s infinite !important;
+  }
+  &.error {
+    background: $red !important;
+  }
+}
+
+@keyframes beatimg-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.25;
+  }
+}
+
+.beatimg-status-text {
+  flex: 1 !important;
+  font-size: 12px !important;
+  color: $muted !important;
+}
+
+.beatimg-beat-count {
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  color: $accent !important;
+  background: rgba(108, 99, 255, 0.12) !important;
+  padding: 2px 9px !important;
+  border-radius: 100px !important;
+  white-space: nowrap !important;
+}
+
+/* Visualizer Canvas */
+.beatimg-visualizer {
+  display: block !important;
+  width: 100% !important;
+  height: 50px !important;
+  background: rgba(0, 0, 0, 0.35) !important;
+  border-top: 1px solid $border !important;
+  border-bottom: 1px solid $border !important;
+}
+
+/* Energy Bar */
+.beatimg-energy-wrap {
+  height: 3px !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.beatimg-energy-fill {
+  height: 100% !important;
+  width: 0% !important;
+  background: linear-gradient(90deg, $accent, $hot) !important;
+  border-radius: 0 2px 2px 0 !important;
+  transition: width 0.05s linear !important;
+}
+
+/* Controls */
+.beatimg-controls {
+  padding: 12px 16px 4px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 10px !important;
+}
+
+.beatimg-control-row {
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 5px !important;
+
+  label {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    color: $muted !important;
+  }
+}
+
+.beatimg-slider-row {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+
+  input[type="range"] {
+    flex: 1 !important;
+    height: 4px !important;
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    background: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 2px !important;
+    outline: none !important;
+    border: none !important;
+    cursor: pointer !important;
+
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none !important;
+      width: 14px !important;
+      height: 14px !important;
+      border-radius: 50% !important;
+      background: $accent !important;
+      box-shadow: 0 0 8px rgba(108, 99, 255, 0.6) !important;
+      cursor: pointer !important;
+      transition: transform 0.1s !important;
+
+      &:active {
+        transform: scale(1.2) !important;
+      }
+    }
+
+    &::-moz-range-thumb {
+      width: 14px !important;
+      height: 14px !important;
+      border-radius: 50% !important;
+      background: $accent !important;
+      cursor: pointer !important;
+      border: none !important;
+    }
+  }
+
+  .beatimg-sval {
+    font-size: 11px !important;
+    font-weight: 600 !important;
+    color: $accent !important;
+    min-width: 38px !important;
+    text-align: right !important;
+  }
+}
+
+/* Buttons */
+.beatimg-btn-row {
+  display: flex !important;
+  gap: 8px !important;
+  padding: 12px 16px 16px !important;
+
+  button {
+    flex: 1 !important;
+    padding: 9px 0 !important;
+    border-radius: 10px !important;
+    border: none !important;
+    cursor: pointer !important;
+    font-size: 12px !important;
+    font-weight: 700 !important;
+    font-family: $font !important;
+    letter-spacing: 0.03em !important;
+    transition:
+      opacity 0.15s,
+      transform 0.1s,
+      box-shadow 0.2s !important;
+
+    &:active:not(:disabled) {
+      transform: scale(0.96) !important;
+    }
+    &:disabled {
+      opacity: 0.3 !important;
+      cursor: not-allowed !important;
+    }
+  }
+}
+
+.beatimg-start-btn {
+  background: $accent !important;
+  color: #fff !important;
+  box-shadow: 0 4px 16px rgba(108, 99, 255, 0.35) !important;
+
+  &:hover:not(:disabled) {
+    box-shadow: 0 6px 20px rgba(108, 99, 255, 0.55) !important;
+  }
+}
+
+.beatimg-stop-btn {
+  background: rgba(255, 59, 59, 0.12) !important;
+  color: $red !important;
+  border: 1px solid rgba(255, 59, 59, 0.2) !important;
+
+  &:hover:not(:disabled) {
+    background: rgba(255, 59, 59, 0.22) !important;
+  }
+}
+
+/* Beat Ring (indicator pulse inside panel) */
+.beatimg-beat-ring {
+  position: absolute !important;
+  bottom: 16px !important;
+  right: 16px !important;
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 50% !important;
+  pointer-events: none !important;
+  opacity: 0 !important;
+  transform-origin: center !important;
+}
+
+/* ------------------------------------------------------------------ */
+/* Overlay                                                            */
+/* ------------------------------------------------------------------ */
+.beatimg-overlay {
+  position: fixed !important;
+  inset: 0 !important;
+  z-index: 2147483646 !important;
+  display: none;
+  align-items: center !important;
+  justify-content: center !important;
+  background: rgba(0, 0, 0, 0.72) !important;
+  backdrop-filter: blur(3px) !important;
+  -webkit-backdrop-filter: blur(3px) !important;
+  cursor: pointer !important;
+  overflow: hidden !important;
+
+  &.visible {
+    display: flex !important;
+  }
+}
+
+.beatimg-overlay-img {
+  max-width: 78vw !important;
+  max-height: 78vh !important;
+  object-fit: contain !important;
+  border-radius: 10px !important;
+  display: block !important;
+  pointer-events: none !important;
+  will-change: transform, opacity, filter !important;
+  box-shadow:
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 0 60px rgba(108, 99, 255, 0.25),
+    0 48px 80px rgba(0, 0, 0, 0.85) !important;
+}
+
+/* Ekran flaş tabakası (beat anında) */
+.beatimg-flash {
+  position: absolute !important;
+  inset: 0 !important;
+  background: #ffffff; /* JS tarafından değiştirilir — !important yok */
+  opacity: 0; /* GSAP animate eder — !important yok */
+  pointer-events: none !important;
+  z-index: 2 !important;
+}
+
+/* Sahnedeki her bir sahne div'i — div kullanılır ki page CSS img stillerini bozmasın */
+.beatimg-scene-img {
+  position: absolute !important;
+  display: block !important;
+  pointer-events: none !important;
+  will-change: transform, opacity, filter !important;
+  background-size: contain !important;
+  background-position: center center !important;
+  background-repeat: no-repeat !important;
+  box-sizing: border-box !important;
+}
+/* ------------------------------------------------------------------ */
+/* Kaynak Sekmeleri                                                    */
+/* ------------------------------------------------------------------ */
+.beatimg-source-tabs {
+  display: flex !important;
+  gap: 4px !important;
+  padding: 10px 16px 0 !important;
+}
+
+.beatimg-tab {
+  flex: 1 !important;
+  padding: 6px 8px !important;
+  border-radius: 8px !important;
+  border: 1px solid $border !important;
+  background: transparent !important;
+  color: $muted !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  font-family: $font !important;
+  cursor: pointer !important;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s !important;
+
+  &.active {
+    background: rgba(108, 99, 255, 0.15) !important;
+    color: $accent !important;
+    border-color: rgba(108, 99, 255, 0.4) !important;
+  }
+
+  &:hover:not(.active) {
+    background: rgba(255, 255, 255, 0.05) !important;
+    color: $text !important;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Dosya Yükleme Alanı                                                 */
+/* ------------------------------------------------------------------ */
+.beatimg-file-zone {
+  padding: 10px 16px 0 !important;
+  display: none;
+
+  &.dragover .beatimg-drop-label {
+    border-color: $accent !important;
+    background: rgba(108, 99, 255, 0.14) !important;
+  }
+}
+
+.beatimg-drop-label {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  padding: 14px 10px !important;
+  border: 1.5px dashed rgba(108, 99, 255, 0.35) !important;
+  border-radius: 10px !important;
+  background: rgba(108, 99, 255, 0.05) !important;
+  cursor: pointer !important;
+  transition:
+    border-color 0.15s,
+    background 0.15s !important;
+
+  &:hover {
+    border-color: rgba(108, 99, 255, 0.65) !important;
+    background: rgba(108, 99, 255, 0.1) !important;
+  }
+}
+
+.beatimg-drop-icon {
+  font-size: 20px !important;
+  line-height: 1 !important;
+}
+
+.beatimg-drop-text {
+  font-size: 11px !important;
+  color: $muted !important;
+  text-align: center !important;
+}
+
+.beatimg-audio-info {
+  margin-top: 7px !important;
+  min-height: 16px !important;
+  overflow: hidden !important;
+}
+
+.beatimg-audio-name {
+  display: block !important;
+  font-size: 11px !important;
+  font-weight: 500 !important;
+  color: $green !important;
+  white-space: nowrap !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  max-width: 100% !important;
+}
+
+.beatimg-audio {
+  display: block !important;
+  width: 100% !important;
+  height: 28px !important;
+  margin-top: 8px !important;
+  border-radius: 6px !important;
+  outline: none !important;
+  accent-color: $accent !important;
+  filter: invert(0.85) hue-rotate(220deg) !important;
+}

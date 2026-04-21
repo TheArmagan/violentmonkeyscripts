@@ -97,7 +97,7 @@ async function main() {
 
       for (let i = 1; i < pages.length; i++) {
         const extraElm = parseHTML(`
-          <a class="grid-item grid-item-extra" data-parent-id="${illustId}" href="/en/artworks/${illustId}">
+          <a class="grid-item grid-item-extra" data-parent-id="${illustId}" target="_blank" href="/en/artworks/${illustId}">
             <span class="extra-page-label">${i + 1} / ${pages.length}</span>
           </a>
         `);

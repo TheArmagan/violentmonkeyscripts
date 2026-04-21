@@ -8,6 +8,7 @@
     "build:gxm": "node builder.js --name gxmodsforall --namespace gxmodsforall --match '*://*/*' --file projects/gxmodsforall/index.js --outfile dist/gxmodsforall.user.js",
     "build:pixiv": "node builder.js --name pixivutils --namespace pixivutils --match 'https://www.pixiv.net/*' --file projects/pixivutils/index.js --outfile dist/pixivutils.user.js",
     "build:boothkit": "node builder.js --name boothkit --namespace boothkit --match 'https://booth.pm/*, https://*.booth.pm/*' --file projects/boothkit/index.ts --outfile dist/boothkit.user.js --svelte",
+    "build:beatimg": "node builder.js --name beatimg --namespace beatimg --match '*://*/*' --file projects/beatimg/index.js --outfile dist/beatimg.user.js",
     "http-server": "cd ./dist && pnpx http-server -c-1 -p8081"
   },
   "keywords": [],
@@ -28,6 +29,7 @@
   },
   "dependencies": {
     "esbuild-sass-plugin": "^3.3.1",
+    "gsap": "^3.15.0",
     "lodash": "^4.17.21",
     "lucide-static": "^0.555.0",
     "masonry-layout": "^4.2.2",
