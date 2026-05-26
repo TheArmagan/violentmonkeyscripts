@@ -47,6 +47,7 @@ class BeatImgApp {
 
     this._poolTimer = null;
     this._dismissTimer = null;
+    this._seenImages = new Set();
     this._sceneGen = 0;  // artarak yeni sahneyi tanımlar
     this._scenePriority = 0;  // bass=3, mid=2, high=1; düşük öncelikli beat üst üste gelmez
     this._preloadCache = new Set(); // önceden yüklenen URL'ler
@@ -206,6 +207,10 @@ class BeatImgApp {
         <button class="${PFX}stop-btn" disabled>■ Stop</button>
       </div>
 
+      <div class="${PFX}btn-row">
+        <button class="${PFX}clear-seen-btn">🗑 Clear seen images (<span class="${PFX}seen-count">0</span>)</button>
+      </div>
+
       <div class="${PFX}beat-ring"></div>
     `;
 
@@ -222,6 +227,8 @@ class BeatImgApp {
     this.cooldownVal = svals[1];
     this.startBtn = this.panel.querySelector(`.${PFX}start-btn`);
     this.stopBtn = this.panel.querySelector(`.${PFX}stop-btn`);
+    this.clearSeenBtn = this.panel.querySelector(`.${PFX}clear-seen-btn`);
+    this.seenCountEl = this.panel.querySelector(`.${PFX}seen-count`);
     this.energyFill = this.panel.querySelector(`.${PFX}energy-fill`);
     this.beatRing = this.panel.querySelector(`.${PFX}beat-ring`);
     this.canvas = this.panel.querySelector(`.${PFX}visualizer`);
@@ -235,6 +242,7 @@ class BeatImgApp {
     this.panel.querySelector(`.${PFX}close-btn`).addEventListener("click", () => this._closePanel());
     this.startBtn.addEventListener("click", () => this._start());
     this.stopBtn.addEventListener("click", () => this._stop());
+    this.clearSeenBtn.addEventListener("click", () => this._clearSeenImages());
 
     // Kaynak sekmeleri
     this.panel.querySelectorAll(`.${PFX}tab`).forEach((btn) => {
@@ -372,8 +380,12 @@ class BeatImgApp {
       pool.add(url);
     });
 
-    this.imagePool = [...pool];
-    // Artık pool'da olmayan URL'leri kuyruktan temizle
+    // Accumulate all images ever seen on this page
+    pool.forEach(src => this._seenImages.add(src));
+    if (this.seenCountEl) this.seenCountEl.textContent = this._seenImages.size;
+
+    this.imagePool = [...this._seenImages];
+    // Remove queued entries that are no longer in pool
     const poolSet = new Set(this.imagePool);
     this._shuffleQueue = this._shuffleQueue.filter(src => poolSet.has(src));
     this._preloadImages();
@@ -387,6 +399,14 @@ class BeatImgApp {
       const img = new Image();
       img.src = src;
     });
+  }
+
+  _clearSeenImages() {
+    this._seenImages.clear();
+    this._shuffleQueue = [];
+    this._scrollQueue = [];
+    if (this.seenCountEl) this.seenCountEl.textContent = 0;
+    this._refreshPool();
   }
 
   _randomImage() {

@@ -301,7 +301,12 @@ $font:
 .beatimg-btn-row {
   display: flex !important;
   gap: 8px !important;
-  padding: 12px 16px 16px !important;
+  padding: 12px 16px 8px !important;
+
+  & + & {
+    padding-top: 0 !important;
+    padding-bottom: 14px !important;
+  }
 
   button {
     flex: 1 !important;
@@ -345,6 +350,28 @@ $font:
 
   &:hover:not(:disabled) {
     background: rgba(255, 59, 59, 0.22) !important;
+  }
+}
+
+.beatimg-clear-seen-btn {
+  background: rgba(120, 120, 160, 0.1) !important;
+  color: $muted !important;
+  border: 1px solid rgba(120, 120, 160, 0.18) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  transition:
+    background 0.15s,
+    color 0.15s,
+    border-color 0.15s !important;
+
+  &:hover {
+    background: rgba(255, 59, 59, 0.12) !important;
+    color: $red !important;
+    border-color: rgba(255, 59, 59, 0.25) !important;
+  }
+
+  &:active {
+    transform: scale(0.96) !important;
   }
 }
 
