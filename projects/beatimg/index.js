@@ -48,6 +48,7 @@ class BeatImgApp {
     this._poolTimer = null;
     this._dismissTimer = null;
     this._seenImages = new Set();
+    this._intersectionObs = null;
     this._sceneGen = 0;  // artarak yeni sahneyi tanımlar
     this._scenePriority = 0;  // bass=3, mid=2, high=1; düşük öncelikli beat üst üste gelmez
     this._preloadCache = new Set(); // önceden yüklenen URL'ler
@@ -108,11 +109,19 @@ class BeatImgApp {
     this._buildPanel();
     this._buildOverlay();
     this._buildScrollOverlay();
+    this._setupIntersectionObserver();
     this._refreshPool();
 
-    this._observer = new MutationObserver(() => {
+    this._observer = new MutationObserver((mutations) => {
+      mutations.forEach(m => {
+        m.addedNodes.forEach(node => {
+          if (node.nodeType !== 1) return;
+          if (node.tagName === 'IMG') this._intersectionObs.observe(node);
+          node.querySelectorAll?.('img').forEach(img => this._intersectionObs.observe(img));
+        });
+      });
       clearTimeout(this._poolTimer);
-      this._poolTimer = setTimeout(() => this._refreshPool(), 900);
+      this._poolTimer = setTimeout(() => this._refreshPool(), 300);
     });
     this._observer.observe(document.body, {
       childList: true,
@@ -351,6 +360,36 @@ class BeatImgApp {
   /* ---------------------------------------------------------------- */
   /* Image Pool                                                       */
   /* ---------------------------------------------------------------- */
+  _setupIntersectionObserver() {
+    this._intersectionObs = new IntersectionObserver((entries) => {
+      let changed = false;
+      entries.forEach(({ isIntersecting, target }) => {
+        if (!isIntersecting) return;
+        const src = target.src;
+        if (!src || src.startsWith('data:image/svg')) return;
+        if (target.naturalWidth < 120 || target.naturalHeight < 120) return;
+        const r = target.getBoundingClientRect();
+        if (r.width < 100 || r.height < 100) return;
+        if (target.closest(`.${PFX}overlay, .${PFX}panel, .${PFX}toggle`)) return;
+        if (!this._seenImages.has(src)) {
+          this._seenImages.add(src);
+          changed = true;
+        }
+      });
+      if (changed) {
+        if (this.seenCountEl) this.seenCountEl.textContent = this._seenImages.size;
+        this.imagePool = [...this._seenImages];
+        this._preloadImages();
+      }
+    }, { threshold: 0.05 });
+
+    document.querySelectorAll('img').forEach(img => {
+      if (!img.closest(`.${PFX}overlay, .${PFX}panel, .${PFX}toggle`)) {
+        this._intersectionObs.observe(img);
+      }
+    });
+  }
+
   _refreshPool() {
     const pool = new Set();
 
@@ -388,6 +427,14 @@ class BeatImgApp {
     // Remove queued entries that are no longer in pool
     const poolSet = new Set(this.imagePool);
     this._shuffleQueue = this._shuffleQueue.filter(src => poolSet.has(src));
+
+    // Ensure any img elements discovered here are observed for real-time viewport capture
+    document.querySelectorAll('img').forEach(img => {
+      if (!img.closest(`.${PFX}overlay, .${PFX}panel, .${PFX}toggle`)) {
+        this._intersectionObs?.observe(img);
+      }
+    });
+
     this._preloadImages();
   }
 
