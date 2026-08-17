@@ -48,13 +48,19 @@ export const BEAT_COLORS = {
 export const POOL = {
   minNatural: 100, // px — gerçek çözünürlük alt sınırı
   minRendered: 80, // px — sayfada kapladığı alan alt sınırı
-  maxImages: 400, // havuzdaki maksimum benzersiz URL
+  maxImages: 500, // havuzdaki maksimum benzersiz URL
   scanDebounce: 800, // ms
   scanMinGap: 4000, // ms — tarama arası minimum süre
   bgScanUntil: 60, // havuzda bu kadar görsel varsa arka plan taraması yapılmaz
   bgScanGap: 20000, // ms — arka plan taramaları arası minimum süre
   bgScanChunk: 250, // her boşta işlenen eleman sayısı
   bgScanMax: 3000, // taranan maksimum eleman
+  // Kuyruk, havuzun tamamını değil kayan bir pencereyi dolaşır. Aksi halde 400
+  // görsellik bir sayfada sıradaki seçimler neredeyse hep indirilmemiş çıkar ve
+  // beat'lerin çoğu boşa gider (ölçüldü: sahne başarısı %9). Pencere her turda
+  // yarı yarıya kayar; zamanla havuzun tamamı gösterilir.
+  window: 40, // sahne kuyruğunun aynı anda dolaştığı görsel sayısı
+  warm: 14, // kuyruğun kaç adım ilerisi önceden indirilir
 };
 
 /** Görsel önbellek limitleri */

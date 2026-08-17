@@ -25,6 +25,7 @@ export class ImagePool {
 
     this._queue = [];
     this._scrollQueue = [];
+    this._cursors = { _queue: 0, _scrollQueue: 0 };
     this._lastFullScan = 0;
     this._lastBgScan = 0;
     this._sweeping = false;
@@ -199,8 +200,8 @@ export class ImagePool {
   }
 
   _notify() {
-    // Yeni gelenleri arka planda indirmeye başla (ilk beat'te takılma olmasın)
-    this.cache.preload(this.list.slice(-24));
+    // Sıradaki seçimleri arka planda indirmeye başla (ilk beat'te boş kalmasın)
+    this._warm("_queue");
     this.onChange?.(this.list.length);
   }
 
@@ -209,6 +210,8 @@ export class ImagePool {
     this.list.length = 0;
     this._queue.length = 0;
     this._scrollQueue.length = 0;
+    this._cursors._queue = 0;
+    this._cursors._scrollQueue = 0;
     this.onChange?.(0);
     this.scan(true);
   }
@@ -217,13 +220,40 @@ export class ImagePool {
   /* Kuyruklar — her görsel tekrar etmeden bir tur gösterilir          */
   /* ---------------------------------------------------------------- */
 
+  /**
+   * Kuyruğu doldurur. Havuz pencereden büyükse yalnızca kayan bir pencere
+   * karıştırılır — böylece sıradaki seçimler önbellekte tutulabilecek kadar az
+   * sayıda görselden gelir ve neredeyse hepsi indirilmiş olur.
+   */
+  _refill(queueName) {
+    const list = this.list;
+    const q = this[queueName];
+    if (list.length <= POOL.window) {
+      q.push(...shuffle(list));
+      return;
+    }
+    const start = this._cursors[queueName] % list.length;
+    const win = [];
+    for (let i = 0; i < POOL.window; i++) win.push(list[(start + i) % list.length]);
+    // Pencere yarı yarıya kayar: hem süreklilik hem de zamanla tüm havuz
+    this._cursors[queueName] = (start + (POOL.window >> 1)) % list.length;
+    q.push(...shuffle(win));
+  }
+
+  /** Kuyruğun ilerisini önceden indirir — beat anında hazır olsunlar */
+  _warm(queueName, n = POOL.warm) {
+    const q = this[queueName];
+    while (q.length < n && this.list.length) this._refill(queueName);
+    if (q.length) this.cache.preload(q.slice(0, n));
+  }
+
   _dequeue(queueName, count) {
     const out = [];
     const q = this[queueName];
     if (!this.list.length) return out;
     let guard = 0;
     while (out.length < count && guard++ < count * 4) {
-      if (!q.length) q.push(...shuffle(this.list));
+      if (!q.length) this._refill(queueName);
       const src = q.shift();
       if (this.seen.has(src)) out.push(src);
     }
@@ -255,8 +285,16 @@ export class ImagePool {
       }
       if (picked.length >= wanted) break;
     }
+    // Kuyruktan yeterince hazır görsel çıkmadıysa, önbellekte çözülmüş duran
+    // herhangi bir görselle tamamla: beat'i boş geçmektense sırayı bozmak yeğdir.
+    if (picked.length < wanted) {
+      const have = new Set(picked.map((e) => e.src));
+      for (const e of this.cache.decoded(wanted - picked.length, have)) picked.push(e);
+    }
+
     // Hazır görsel yetmediyse bir sonraki beat'e hazır olsunlar diye indirmeyi tetikle
     this.cache.preload(fallback);
+    this._warm("_queue");
     return picked;
   }
 

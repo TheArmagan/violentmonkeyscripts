@@ -51,6 +51,28 @@ export class ImageCache {
     return null;
   }
 
+  /**
+   * Çözülmüş (hazır) girdilerden en fazla `count` tanesini döner.
+   * Kuyruktan hazır görsel çıkmadığında sahnenin boş kalmaması için kullanılır;
+   * en uzun süredir gösterilmeyenler önce gelir, böylece tekrar azalır.
+   * @param {number} count
+   * @param {Set<string>} [exclude]
+   */
+  decoded(count, exclude) {
+    if (count <= 0) return [];
+    const out = [];
+    for (const e of this.entries.values()) {
+      if (e.state !== "ready" || !e.img) continue;
+      if (exclude?.has(e.src)) continue;
+      out.push(e);
+    }
+    out.sort((a, b) => a.used - b.used);
+    const picked = out.slice(0, count);
+    const now = performance.now();
+    for (const e of picked) e.used = now; // gösterilenler LRU'da korunsun
+    return picked;
+  }
+
   /** Görseli indirir/çözer */
   load(src) {
     const e = this.entry(src);

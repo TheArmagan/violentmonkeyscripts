@@ -211,7 +211,8 @@ export class BeatImgApp {
   _onFrame(f) {
     // Kayan şerit hızı: tempo + anlık enerji
     const bpmScale = f.bpm > 0 ? clamp(f.bpm / 120, 0.5, 1.9) : 1;
-    const energyScale = clamp(0.45 + f.level * 2.6, 0.35, 3.2);
+    // f.level artık normalize dB (tipik müzikte ~0.4–0.8), lineer büyüklük değil
+    const energyScale = clamp(0.35 + f.level * 1.3, 0.35, 3.2);
     this._speed = lerp(this._speed, bpmScale * energyScale, 0.15);
     this.stage.setSpeedScale(this._speed);
 

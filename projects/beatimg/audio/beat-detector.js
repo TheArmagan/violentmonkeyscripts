@@ -45,15 +45,25 @@ class Ring {
   }
 }
 
+/* Seviyeler dB ekseninde normalize edilir (0 = minDecibels, 1 = maxDecibels).
+ * Lineer büyüklük kullanmak eşikleri ses seviyesine bağımlı yapıyordu: -45 dB
+ * altındaki normal mikrofon/çalma seviyelerinde lineer değerler ~0.005'te kalır
+ * ve aşağıdaki kapılar hiç açılmazdı (görselleştirici byte verisi kullandığı
+ * için çalışmaya devam eder, efektler ise hiç tetiklenmezdi). Normalize dB ile
+ * eşikler ~60 dB'lik bir aralıkta ses seviyesinden bağımsız çalışır. */
+
 /** Onset üretecek bantlar ve dışarıya verilen beat türleri */
 const TRIGGERS = [
-  { type: "bass", bands: ["sub", "bass"], cdScale: 1.0, senScale: 1.0, floor: 0.004 },
-  { type: "mid", bands: ["lowMid", "mid"], cdScale: 0.72, senScale: 1.12, floor: 0.0018 },
-  { type: "high", bands: ["high", "air"], cdScale: 0.5, senScale: 1.25, floor: 0.0006 },
+  { type: "bass", bands: ["sub", "bass"], cdScale: 1.0, senScale: 1.0, floor: 0.2 },
+  { type: "mid", bands: ["lowMid", "mid"], cdScale: 0.72, senScale: 1.12, floor: 0.16 },
+  { type: "high", bands: ["high", "air"], cdScale: 0.5, senScale: 1.25, floor: 0.12 },
 ];
 
-/** Tam sessizlikte hiçbir bant tetiklenmesin */
-const SILENCE_GATE = 0.03;
+/** Tam sessizlikte hiçbir bant tetiklenmesin (normalize dB) */
+const SILENCE_GATE = 0.16;
+
+const DEFAULT_MIN_DB = -100;
+const DEFAULT_MAX_DB = -12;
 
 export class BeatDetector {
   constructor({ sensitivity = 1.45, cooldown = 150 } = {}) {
@@ -92,6 +102,9 @@ export class BeatDetector {
     const a = graph.analyser;
     if (!a) throw new Error("AudioGraph has no analyser");
     const bins = a.frequencyBinCount;
+    // Analyser'ın dB penceresi — byte spektrumuyla aynı normalizasyon kullanılır
+    this._minDb = isFinite(a.minDecibels) ? a.minDecibels : DEFAULT_MIN_DB;
+    this._dbRange = Math.max(1, (isFinite(a.maxDecibels) ? a.maxDecibels : DEFAULT_MAX_DB) - this._minDb);
     this._freq = new Float32Array(bins);
     this._bytes = new Uint8Array(bins);
     this._prevMag = new Float32Array(bins);
@@ -155,6 +168,8 @@ export class BeatDetector {
 
     const freq = this._freq;
     const prev = this._prevMag;
+    const minDb = this._minDb;
+    const dbRange = this._dbRange;
     const bands = {};
     const fluxes = {};
     let total = 0;
@@ -164,9 +179,9 @@ export class BeatDetector {
       let energy = 0;
       let flux = 0;
       for (let i = lo; i <= hi; i++) {
-        // dB → lineer büyüklük (minDecibels -100 → 0)
+        // dB → 0..1 (minDecibels = 0, maxDecibels = 1); ses seviyesinden bağımsız
         const db = freq[i];
-        const mag = db <= -100 || !isFinite(db) ? 0 : Math.pow(10, db / 20);
+        const mag = isFinite(db) ? clamp((db - minDb) / dbRange, 0, 1) : 0;
         energy += mag;
         const d = mag - prev[i];
         if (d > 0) flux += d;
@@ -177,11 +192,11 @@ export class BeatDetector {
       flux /= Math.sqrt(n); // bant genişliğinden bağımsızlaştır
       bands[b.key] = energy;
       fluxes[b.key] = flux;
-      this._levels[b.key] = smooth(this._levels[b.key], clamp(energy * 14, 0, 1), 0.08, dt);
+      this._levels[b.key] = smooth(this._levels[b.key], clamp(energy * 1.25, 0, 1), 0.08, dt);
       total += energy;
     }
 
-    this.level = smooth(this.level, clamp((total / BANDS.length) * 12, 0, 1), 0.1, dt);
+    this.level = smooth(this.level, clamp(total / BANDS.length, 0, 1), 0.1, dt);
     this.peak = Math.max(this.peak * 0.94, this.level);
 
     this.onFrame?.({
@@ -250,7 +265,7 @@ export class BeatDetector {
     // Dayanıklılık ağı: uzun süre onset yoksa ama ses varsa tempoya uygun beat üret
     const last = Math.max(this._lastBeat.bass, this._lastBeat.mid, this._lastBeat.high);
     const gap = this.bpm > 0 ? clamp(60000 / this.bpm, 250, 1200) : 800;
-    if (this.level > SILENCE_GATE * 2 && now - last > gap * 1.6) {
+    if (this.level > SILENCE_GATE * 1.25 && now - last > gap * 1.6) {
       const type = bands.bass >= bands.mid && bands.bass >= bands.high ? "bass" : bands.mid >= bands.high ? "mid" : "high";
       this._lastBeat[type] = now;
       this.onBeat?.({
